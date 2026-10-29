@@ -319,15 +319,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       height: 48,
                       width: double.infinity,
                       child: TextButton(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Halaman pendaftaran belum tersedia.',
-                              ),
-                            ),
-                          );
-                        },
+                        onPressed: () => context.push('/register'),
                         style: TextButton.styleFrom(
                           backgroundColor: const Color(0xFFECF2FF),
                           foregroundColor: _blue,

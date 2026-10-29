@@ -6,6 +6,7 @@ import '../screens/account_screen.dart';
 import '../screens/detail_screen.dart';
 import '../screens/login_screen.dart';
 import '../widget/main_shell.dart';
+import '../screens/register_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -17,6 +18,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/login',
       builder: (context, state) => const LoginScreen(),
+    ),
+    GoRoute(
+      path: '/register',
+      builder: (context, state) => const RegisterScreen(),
     ),
     ShellRoute(
       navigatorKey: _shellNavigatorKey,
