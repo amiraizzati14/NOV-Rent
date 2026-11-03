@@ -28,8 +28,7 @@ final GoRouter appRouter = GoRouter(
     // TAMBAHKAN ROUTE ADMIN DI SINI
     GoRoute(
       path: '/admin',
-      builder: (context, state) =>
-      const AdminDashboardScreen(),
+      builder: (context, state) => const AdminDashboardScreen(),
     ),
 
     ShellRoute(
@@ -58,7 +57,10 @@ final GoRouter appRouter = GoRouter(
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) {
         final id = state.pathParameters['id']!;
-        return DetailScreen(carId: id);
+
+        return DetailScreen(
+          carId: id,
+        );
       },
     ),
   ],
