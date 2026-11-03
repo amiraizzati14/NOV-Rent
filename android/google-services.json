@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "821747205997",
+    "project_id": "nov-rent",
+    "storage_bucket": "nov-rent.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:821747205997:android:0112f0dc86cd11b48ffc64",
+        "android_client_info": {
+          "package_name": "com.example.nov_rent"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA3GEFjUHKw62mF92m3MRk5D29-y-8nwnw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
