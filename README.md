@@ -1,17 +1,12 @@
-# nov_rent
+## 1. Ringkasan Proyek
 
-A new Flutter project.
+NOV Rent merupakan aplikasi penyewaan mobil berbasis mobile yang dirancang untuk membantu pelanggan memperoleh informasi kendaraan, menentukan jadwal penyewaan, memilih jenis layanan, mengajukan pemesanan, melakukan simulasi pembayaran, dan memantau status penyewaan melalui perangkat Android.
 
-## Getting Started
+Pengembangan selama empat minggu difokuskan pada penyelesaian alur utama pelanggan secara terintegrasi. Fungsi admin disiapkan dalam bentuk implementasi sederhana untuk mendukung persetujuan atau penolakan pesanan, verifikasi pembayaran, dan pembaruan status sehingga keseluruhan proses dapat diperagakan dan diuji.
 
-This project is a starting point for a Flutter application.
+### Tujuan Pengembangan
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+1. Menghasilkan aplikasi Android yang dapat digunakan untuk melihat informasi kendaraan dan mengajukan penyewaan.
+2. Mengimplementasikan proses pemesanan yang mencakup jadwal, pilihan layanan, alamat serah terima, serta perhitungan estimasi biaya.
+3. Menyediakan simulasi pembayaran, unggah bukti pembayaran, dan pemantauan status pesanan.
+4. Mengintegrasikan seluruh fitur dengan Firebase dan memastikan alur aplikasi dapat diuji dari awal hingga akhir.
