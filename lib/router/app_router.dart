@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../screens/home_screen.dart';
-import '../screens/katalog_screen.dart';
-import '../screens/account_screen.dart';
-import '../screens/detail_screen.dart';
+import 'package:nov_rent/screens/user/favorite_screen.dart';
+import 'package:nov_rent/screens/user/pesanan_screen.dart';
+import '../screens/user/home_screen.dart';
+import '../screens/user/katalog_screen.dart';
+import '../screens/user/account_screen.dart';
+import '../screens/user/detail_screen.dart';
 import '../screens/login_screen.dart';
 import '../widget/main_shell.dart';
 import '../screens/register_screen.dart';
-import '../screens/admin_dashboard_screen.dart';
+import '../screens/admin/admin_dashboard_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -42,8 +44,12 @@ final GoRouter appRouter = GoRouter(
           builder: (context, state) => const HomeScreen(),
         ),
         GoRoute(
-          path: '/katalog',
-          builder: (context, state) => const KatalogScreen(),
+          path: '/favorite',
+          builder: (context, state) => const FavoriteScreen(),
+        ),
+        GoRoute(
+          path: '/pesanan',
+          builder: (context, state) => const PesananScreen(),
         ),
         GoRoute(
           path: '/account',
