@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -9,6 +8,9 @@ class AuthProvider extends ChangeNotifier {
 
   bool _isAuthenticated = false;
   bool get isAuthenticated => _isAuthenticated;
+
+  String? _role;
+  String? get role => _role;
 
   User? get currentUser => _auth.currentUser;
 
@@ -30,27 +32,78 @@ class AuthProvider extends ChangeNotifier {
       throw Exception('Gagal membuat akun.');
     }
 
-    await _db.collection('users').doc(user.uid).set({
-      'name': name.trim(),
-      'email': email.trim(),
-      'phone': phone.trim(),
-      'role': 'customer',
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+    try {
+      await _db.collection('users').doc(user.uid).set({
+        'name': name.trim(),
+        'email': email.trim(),
+        'phone': phone.trim(),
+        'role': 'customer',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
 
-    _isAuthenticated = true;
-    notifyListeners();
+      _role = 'customer';
+      _isAuthenticated = true;
+
+      notifyListeners();
+    } catch (e) {
+      // Jika penyimpanan profil gagal, keluar dari akun
+      await _auth.signOut();
+
+      _isAuthenticated = false;
+      _role = null;
+
+      notifyListeners();
+
+      rethrow;
+    }
   }
 
   // LOGIN
   Future<void> login(String email, String password) async {
-    await _auth.signInWithEmailAndPassword(
+    final credential = await _auth.signInWithEmailAndPassword(
       email: email.trim(),
       password: password,
     );
 
-    _isAuthenticated = true;
-    notifyListeners();
+    final user = credential.user;
+
+    if (user == null) {
+      throw Exception('User tidak ditemukan.');
+    }
+
+    try {
+      final doc = await _db
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (!doc.exists) {
+        throw Exception(
+          'Profil user tidak ditemukan di Firestore.',
+        );
+      }
+
+      final data = doc.data();
+      final userRole = data?['role'];
+
+      if (userRole != 'admin' && userRole != 'customer') {
+        throw Exception('Role akun tidak valid.');
+      }
+
+      _role = userRole as String;
+      _isAuthenticated = true;
+
+      notifyListeners();
+    } catch (e) {
+      await _auth.signOut();
+
+      _isAuthenticated = false;
+      _role = null;
+
+      notifyListeners();
+
+      rethrow;
+    }
   }
 
   // LOGOUT
@@ -58,6 +111,8 @@ class AuthProvider extends ChangeNotifier {
     await _auth.signOut();
 
     _isAuthenticated = false;
+    _role = null;
+
     notifyListeners();
   }
 }

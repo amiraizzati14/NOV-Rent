@@ -34,6 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     if (_isLoading) return;
+
     if (!_formKey.currentState!.validate()) return;
 
     FocusScope.of(context).unfocus();
@@ -41,14 +42,31 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await context.read<AuthProvider>().login(
+      final auth = context.read<AuthProvider>();
+
+      await auth.login(
         _emailController.text.trim(),
         _passwordController.text,
       );
 
       if (!mounted) return;
 
-      context.go('/home');
+      // Arahkan berdasarkan role pengguna
+      if (auth.role == 'admin') {
+        context.go('/admin');
+      } else if (auth.role == 'customer') {
+        context.go('/home');
+      } else {
+        await auth.logout();
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Role akun tidak dikenali.'),
+          ),
+        );
+      }
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
 
@@ -60,12 +78,24 @@ class _LoginScreenState extends State<LoginScreen> {
         case 'user-not-found':
           message = 'Email atau kata sandi salah.';
           break;
+
         case 'invalid-email':
           message = 'Format email tidak valid.';
           break;
-        case 'too-many-requests':
-          message = 'Terlalu banyak percobaan. Coba lagi nanti.';
+
+        case 'user-disabled':
+          message = 'Akun ini telah dinonaktifkan.';
           break;
+
+        case 'too-many-requests':
+          message =
+          'Terlalu banyak percobaan. Coba lagi nanti.';
+          break;
+
+        case 'network-request-failed':
+          message = 'Periksa koneksi internet kamu.';
+          break;
+
         default:
           message = e.message ?? 'Login gagal.';
       }
@@ -77,7 +107,9 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Login gagal: $e')),
+        SnackBar(
+          content: Text('Login gagal: $e'),
+        ),
       );
     } finally {
       if (mounted) {
@@ -138,7 +170,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 key: _formKey,
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(
-                    24, 36, 24, 32,
+                    24,
+                    36,
+                    24,
+                    32,
                   ),
                   keyboardDismissBehavior:
                   ScrollViewKeyboardDismissBehavior.onDrag,
@@ -169,7 +204,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           'assets/images/logo.png',
                           width: 280,
                           fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) {
+                          errorBuilder:
+                              (context, error, stackTrace) {
                             return const Text(
                               'Logo belum terbaca',
                               style: TextStyle(
@@ -293,8 +329,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         child: _isLoading
-                            ? const CircularProgressIndicator(
-                          color: Colors.white,
+                            ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
                         )
                             : const Text('Masuk'),
                       ),
@@ -306,9 +347,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       height: 48,
                       width: double.infinity,
                       child: TextButton(
-                        onPressed: () => context.push('/register'),
+                        onPressed: _isLoading
+                            ? null
+                            : () => context.push('/register'),
                         style: TextButton.styleFrom(
-                          backgroundColor: const Color(0xFFECF2FF),
+                          backgroundColor:
+                          const Color(0xFFECF2FF),
                           foregroundColor: _blue,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
