@@ -1,3 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart'
+    hide AuthProvider;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -36,9 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     FocusScope.of(context).unfocus();
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
       await context.read<AuthProvider>().login(
@@ -49,21 +49,39 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       context.go('/home');
-    } catch (_) {
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+
+      String message;
+
+      switch (e.code) {
+        case 'invalid-credential':
+        case 'wrong-password':
+        case 'user-not-found':
+          message = 'Email atau kata sandi salah.';
+          break;
+        case 'invalid-email':
+          message = 'Format email tidak valid.';
+          break;
+        case 'too-many-requests':
+          message = 'Terlalu banyak percobaan. Coba lagi nanti.';
+          break;
+        default:
+          message = e.message ?? 'Login gagal.';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } catch (e) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Gagal masuk. Periksa email dan kata sandimu.',
-          ),
-        ),
+        SnackBar(content: Text('Login gagal: $e')),
       );
     } finally {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -120,15 +138,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 key: _formKey,
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(
-                    24,
-                    36,
-                    24,
-                    32,
+                    24, 36, 24, 32,
                   ),
                   keyboardDismissBehavior:
                   ScrollViewKeyboardDismissBehavior.onDrag,
                   children: [
-                    // Judul
                     const Text(
                       'Perjalananmu,\npilihanmu.',
                       style: TextStyle(
@@ -142,7 +156,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Logo hanya ditampilkan di tengah.
                     Container(
                       height: 145,
                       width: double.infinity,
@@ -194,14 +207,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Email
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
-                      autofillHints: const [
-                        AutofillHints.email,
-                      ],
+                      autofillHints: const [AutofillHints.email],
                       autocorrect: false,
                       style: const TextStyle(
                         color: _dark,
@@ -230,14 +240,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     const SizedBox(height: 16),
 
-                    // Kata sandi
                     TextFormField(
                       controller: _passwordController,
                       obscureText: _obscureText,
                       textInputAction: TextInputAction.done,
-                      autofillHints: const [
-                        AutofillHints.password,
-                      ],
+                      autofillHints: const [AutofillHints.password],
                       autocorrect: false,
                       enableSuggestions: false,
                       style: const TextStyle(
@@ -248,9 +255,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         label: 'Kata sandi',
                         hint: 'Masukkan kata sandi',
                         suffixIcon: IconButton(
-                          tooltip: _obscureText
-                              ? 'Tampilkan kata sandi'
-                              : 'Sembunyikan kata sandi',
                           onPressed: () {
                             setState(() {
                               _obscureText = !_obscureText;
@@ -261,7 +265,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ? Icons.visibility_off_outlined
                                 : Icons.visibility_outlined,
                             color: const Color(0xFF8190A8),
-                            size: 21,
                           ),
                         ),
                       ),
@@ -277,7 +280,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     const SizedBox(height: 20),
 
-                    // Tombol masuk
                     SizedBox(
                       height: 52,
                       width: double.infinity,
@@ -286,35 +288,20 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _blue,
                           foregroundColor: Colors.white,
-                          disabledBackgroundColor:
-                          const Color(0xFFA5BDF8),
-                          elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
                         child: _isLoading
-                            ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
+                            ? const CircularProgressIndicator(
+                          color: Colors.white,
                         )
-                            : const Text(
-                          'Masuk',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                            : const Text('Masuk'),
                       ),
                     ),
 
                     const SizedBox(height: 16),
 
-                    // Tombol daftar
                     SizedBox(
                       height: 48,
                       width: double.infinity,

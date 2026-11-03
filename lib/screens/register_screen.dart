@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart'
+    hide AuthProvider;
+import '../providers/auth_provider.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -18,6 +22,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
+  bool _isLoading = false;
+
   static const _blue = Color(0xFF2860ED);
   static const _dark = Color(0xFF19283F);
   static const _muted = Color(0xFF7888A3);
@@ -33,19 +39,67 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _register() {
+  Future<void> _register() async {
+    if (_isLoading) return;
     if (!_formKey.currentState!.validate()) return;
 
     FocusScope.of(context).unfocus();
 
-    // Sambungkan proses pendaftaran ke AuthProvider di sini.
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Isian sudah valid. Proses pendaftaran belum terhubung.',
+    setState(() => _isLoading = true);
+
+    try {
+      await context.read<AuthProvider>().register(
+        name: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        phone: _phoneController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Registrasi berhasil! Selamat datang di NOV Rent.'),
         ),
-      ),
-    );
+      );
+
+      context.go('/home');
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+
+      String message;
+
+      switch (e.code) {
+        case 'email-already-in-use':
+          message = 'Email sudah terdaftar. Silakan login.';
+          break;
+        case 'invalid-email':
+          message = 'Format email tidak valid.';
+          break;
+        case 'weak-password':
+          message = 'Kata sandi terlalu lemah.';
+          break;
+        case 'network-request-failed':
+          message = 'Periksa koneksi internet kamu.';
+          break;
+        default:
+          message = e.message ?? 'Registrasi gagal.';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Registrasi gagal: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   OutlineInputBorder _border(Color color) {
@@ -160,7 +214,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         if (value == null || value.trim().isEmpty) {
                           return 'Nama lengkap wajib diisi';
                         }
-
                         return null;
                       },
                     ),
@@ -288,7 +341,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       height: 52,
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _register,
+                        onPressed: _isLoading ? null : _register,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _blue,
                           foregroundColor: Colors.white,
@@ -297,7 +350,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        child: const Text(
+                        child: _isLoading
+                            ? const CircularProgressIndicator(
+                          color: Colors.white,
+                        )
+                            : const Text(
                           'Daftar sekarang',
                           style: TextStyle(
                             fontSize: 14,
