@@ -28,7 +28,7 @@ class AdminDashboardScreen extends StatelessWidget {
       ),
       body: const Center(
         child: Text(
-          'Welcome Admin!',
+          'halo admin',
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,

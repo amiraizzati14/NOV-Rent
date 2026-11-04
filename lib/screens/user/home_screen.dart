@@ -15,7 +15,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  bool _withDriver = false;
   bool _isLoading = false;
   bool _hasSearched = false;
 
@@ -155,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final snapshot = await _db
           .collection('cars')
-          .where('status', isEqualTo: 'available')
+          .where('isAvailable', isEqualTo: true)
           .get();
 
       if (!mounted) return;
@@ -185,8 +184,11 @@ class _HomeScreenState extends State<HomeScreen> {
   // ==========================================
 
   String _getImage(Map<String, dynamic> data) {
-    final images = data['imageUrls'];
+    if (data['imageUrl'] is String && (data['imageUrl'] as String).isNotEmpty) {
+      return data['imageUrl'];
+    }
 
+    final images = data['imageUrls'];
     if (images is List && images.isNotEmpty) {
       return images.first.toString();
     }
@@ -227,41 +229,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
       },
-    );
-  }
-
-  // ==========================================
-  // PILIH MODE SEWA
-  // ==========================================
-
-  Widget _modeButton({
-    required String title,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(9),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            vertical: 11,
-          ),
-          decoration: BoxDecoration(
-            color: selected ? blue : Colors.transparent,
-            borderRadius: BorderRadius.circular(9),
-          ),
-          child: Text(
-            title,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: selected ? Colors.white : dark,
-            ),
-          ),
-        ),
-      ),
     );
   }
 
@@ -325,38 +292,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEDEEF1),
-              borderRadius: BorderRadius.circular(11),
-            ),
-            child: Row(
-              children: [
-                _modeButton(
-                  title: 'Lepas Kunci',
-                  selected: !_withDriver,
-                  onTap: () {
-                    setState(() {
-                      _withDriver = false;
-                      _hasSearched = false;
-                    });
-                  },
-                ),
-                _modeButton(
-                  title: 'Dengan Sopir',
-                  selected: _withDriver,
-                  onTap: () {
-                    setState(() {
-                      _withDriver = true;
-                      _hasSearched = false;
-                    });
-                  },
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
           Row(
             children: [
               _dateBox(
@@ -580,7 +515,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 child: const Text(
-                  'Pilih & Detail →',
+                  'Pilih & Detail >',
                   style: TextStyle(fontSize: 11),
                 ),
               ),

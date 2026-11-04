@@ -54,16 +54,20 @@ class DetailScreen extends StatelessWidget {
               car['description']?.toString() ?? 'Belum ada deskripsi mobil.';
 
           final String transmission = car['transmission']?.toString() ?? '-';
-
           final String fuelType = car['fuelType']?.toString() ?? '-';
-
           final int capacity = _toInt(car['capacity']);
-
           final int pricePerDay = _toInt(car['pricePerDay']);
+          final bool isAvailable = car['isAvailable'] == true;
 
-          final String status = car['status']?.toString() ?? 'available';
+          final String year = car['year']?.toString() ?? '-';
+          final String engine = car['engine']?.toString() ??
+              (car['engineCC'] != null ? '${car['engineCC']} cc' : '-');
+          final String luggage = car['luggage']?.toString() ?? '2 Koper';
 
-          final List<String> imageUrls = _getImageUrls(car['imageUrls']);
+          final String imageUrl = car['imageUrl']?.toString() ??
+              (car['imageUrls'] is List && (car['imageUrls'] as List).isNotEmpty
+                  ? (car['imageUrls'] as List).first.toString()
+                  : '');
 
           return _buildDetailPage(
             context: context,
@@ -75,8 +79,11 @@ class DetailScreen extends StatelessWidget {
             fuelType: fuelType,
             capacity: capacity,
             pricePerDay: pricePerDay,
-            status: status,
-            imageUrls: imageUrls,
+            status: isAvailable,
+            imageUrl: imageUrl,
+            year: year,
+            engine: engine,
+            luggage: luggage,
           );
         },
       ),
@@ -93,8 +100,11 @@ class DetailScreen extends StatelessWidget {
     required String fuelType,
     required int capacity,
     required int pricePerDay,
-    required String status,
-    required List<String> imageUrls,
+    required bool status,
+    required String imageUrl,
+    required String year,
+    required String engine,
+    required String luggage,
   }) {
     return SafeArea(
       child: Column(
@@ -112,7 +122,7 @@ class DetailScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // CAR IMAGE
-                  _buildCarImage(imageUrls),
+                  _buildCarImage(imageUrl),
 
                   const SizedBox(height: 18),
 
@@ -242,7 +252,7 @@ class DetailScreen extends StatelessWidget {
                           child: _specCard(
                             icon: Icons.luggage_outlined,
                             title: 'Bagasi',
-                            value: '3 Koper Besar',
+                            value: luggage,
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -250,7 +260,7 @@ class DetailScreen extends StatelessWidget {
                           child: _specCard(
                             icon: Icons.calendar_month_outlined,
                             title: 'Tahun',
-                            value: '-',
+                            value: year,
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -258,7 +268,7 @@ class DetailScreen extends StatelessWidget {
                           child: _specCard(
                             icon: Icons.speed_outlined,
                             title: 'Mesin',
-                            value: '-',
+                            value: engine,
                           ),
                         ),
                       ],
@@ -382,7 +392,7 @@ class DetailScreen extends StatelessWidget {
   }
 
   // CAR IMAGE
-  Widget _buildCarImage(List<String> imageUrls) {
+  Widget _buildCarImage(String imageUrl) {
     return Container(
       margin: const EdgeInsets.fromLTRB(
         16,
@@ -397,9 +407,9 @@ class DetailScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
       ),
       clipBehavior: Clip.antiAlias,
-      child: imageUrls.isNotEmpty
+      child: imageUrl.isNotEmpty
           ? Image.network(
-              imageUrls.first,
+              imageUrl,
               fit: BoxFit.cover,
               loadingBuilder: (context, child, progress) {
                 if (progress == null) {
@@ -453,9 +463,7 @@ class DetailScreen extends StatelessWidget {
   }
 
   // STATUS
-  Widget _buildStatus(String status) {
-    final bool available = status.toLowerCase() == 'available';
-
+  Widget _buildStatus(bool available) {
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: 12,
@@ -477,7 +485,7 @@ class DetailScreen extends StatelessWidget {
             child: Text(
               available
                   ? 'Mobil tersedia untuk disewa'
-                  : 'Status mobil: $status',
+                  : 'Mobil sedang tidak tersedia',
               style: TextStyle(
                 fontSize: 12,
                 color:
@@ -647,10 +655,8 @@ class DetailScreen extends StatelessWidget {
   Widget _buildBottomPrice(
     BuildContext context,
     int pricePerDay,
-    String status,
+    bool available,
   ) {
-    final bool available = status.toLowerCase() == 'available';
-
     return Container(
       padding: const EdgeInsets.fromLTRB(
         18,
