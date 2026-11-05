@@ -10,6 +10,8 @@ import '../screens/login_screen.dart';
 import '../widget/main_shell.dart';
 import '../screens/register_screen.dart';
 import '../screens/admin/admin_dashboard_screen.dart';
+import '../screens/admin/armada_screen.dart';
+import '../screens/admin/admin_shell.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -27,10 +29,26 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const RegisterScreen(),
     ),
 
-    // TAMBAHKAN ROUTE ADMIN DI SINI
-    GoRoute(
-      path: '/admin',
-      builder: (context, state) => const AdminDashboardScreen(),
+    ShellRoute(
+      builder: (context, state, child) => AdminShell(child: child),
+      routes: [
+        GoRoute(
+          path: '/admin',
+          builder: (context, state) => const AdminDashboardScreen(),
+        ),
+        GoRoute(
+          path: '/admin/armada',
+          builder: (context, state) => const ArmadaScreen(),
+        ),
+        GoRoute(
+          path: '/admin/pesanan',
+          builder: (context, state) => const AdminPlaceholderScreen(title: 'Pesanan', icon: Icons.assignment_outlined),
+        ),
+        GoRoute(
+          path: '/admin/verifikasi',
+          builder: (context, state) => const AdminPlaceholderScreen(title: 'Verifikasi', icon: Icons.verified_user_outlined),
+        ),
+      ],
     ),
 
     ShellRoute(
