@@ -17,6 +17,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   bool _isLoading = false;
   bool _hasSearched = false;
+  bool _withDriver = false;
 
   DateTime? _startDate;
   DateTime? _endDate;
@@ -28,12 +29,12 @@ class _HomeScreenState extends State<HomeScreen> {
   // ==========================================
 
   String _formatPrice(dynamic price) {
-    final value = (price as num?)?.toInt() ?? 0;
+    final value = _priceValue(price).toInt();
 
     return 'Rp${value.toString().replaceAllMapped(
-          RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+      RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
           (m) => '${m[1]}.',
-        )}';
+    )}';
   }
 
   // ==========================================
@@ -77,11 +78,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final firstDate = isStart
         ? today
         : (_startDate ?? today).add(
-            const Duration(days: 1),
-          );
+      const Duration(days: 1),
+    );
 
     final initialDate =
-        isStart ? (_startDate ?? today) : (_endDate ?? firstDate);
+    isStart ? (_startDate ?? today) : (_endDate ?? firstDate);
 
     final selected = await showDatePicker(
       context: context,
@@ -197,9 +198,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _carImage(
-    String url, {
-    double height = 150,
-  }) {
+      String url, {
+        double height = 150,
+      }) {
     if (url.isEmpty) {
       return Container(
         height: height,
@@ -280,6 +281,36 @@ class _HomeScreenState extends State<HomeScreen> {
   // FORM PENCARIAN
   // ==========================================
 
+  Widget _rentalMode(String label, bool withDriver) {
+    final selected = _withDriver == withDriver;
+    return Expanded(
+      child: Semantics(
+        selected: selected,
+        button: true,
+        child: Material(
+          color: selected ? blue : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: _isLoading ? null : () {
+              setState(() {
+                _withDriver = withDriver;
+                _hasSearched = false;
+                _cars.clear();
+              });
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text(label, textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
+                      color: selected ? Colors.white : const Color(0xFF465047))),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildSearchCard() {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -292,6 +323,18 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Column(
         children: [
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEEEEF1),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(children: [
+              _rentalMode('Lepas Kunci', false),
+              _rentalMode('Dengan Sopir', true),
+            ]),
+          ),
+          const SizedBox(height: 10),
           Row(
             children: [
               _dateBox(
@@ -315,13 +358,13 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: _isLoading ? null : _searchCars,
               icon: _isLoading
                   ? const SizedBox(
-                      height: 16,
-                      width: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
+                height: 16,
+                width: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
                   : const Icon(Icons.search, size: 17),
               label: Text(
                 _isLoading ? 'Mencari Mobil...' : 'Cari Mobil Tersedia',
@@ -370,169 +413,122 @@ class _HomeScreenState extends State<HomeScreen> {
   // CARD MOBIL
   // ==========================================
 
-  Widget _carCard(
-    QueryDocumentSnapshot<Map<String, dynamic>> car,
-  ) {
+  Widget _carCard(QueryDocumentSnapshot<Map<String, dynamic>> car,
+      {bool popular = false}) {
     final data = car.data();
-
     final name = data['name']?.toString() ?? 'Mobil';
-    final brand = data['brand']?.toString() ?? '-';
-    final category = data['category']?.toString() ?? '-';
     final year = data['year']?.toString() ?? '-';
-    final transmission = data['transmission']?.toString() ?? '-';
-    final capacity = data['capacity']?.toString() ?? '-';
-    final price = data['pricePerDay'] ?? 0;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(13),
-        border: Border.all(
-          color: const Color(0xFFECECF1),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: Stack(
-              children: [
-                _carImage(_getImage(data), height: 155),
-                Positioned(
-                  top: 9,
-                  left: 9,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 9,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(7),
-                    ),
-                    child: Text(
-                      year,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 11),
-          Text(
-            category.toUpperCase(),
-            style: const TextStyle(
-              fontSize: 9,
-              color: Colors.grey,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            name,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: dark,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            brand,
-            style: const TextStyle(
-              fontSize: 10,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 9),
-          Wrap(
-            spacing: 15,
-            children: [
-              _infoItem(
-                Icons.settings,
-                transmission,
-              ),
-              _infoItem(
-                Icons.people_outline,
-                '$capacity Kursi',
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const Divider(height: 1),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    final price = _formatPrice(data['pricePerDay']);
+    final image = _getImage(data);
+    final border = BorderRadius.circular(16);
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: border,
+          side: const BorderSide(color: Color(0xFFECECF1))),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _showCarDetail(car),
+        child: popular
+            ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Stack(children: [
+            _carImage(image, height: 108),
+            Positioned(top: 10, left: 10, child: Row(children: [
+              _badge(year, Colors.white, const Color(0xFF747C8B)),
+              const SizedBox(width: 5),
+              _badge('🔥 Populer', const Color(0xFFFFF3E8),
+                  const Color(0xFFD76200)),
+            ])),
+          ]),
+          Padding(padding: const EdgeInsets.all(10),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Harga sewa',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      _formatPrice(price),
-                      style: const TextStyle(
-                        fontSize: 17,
-                        color: blue,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Text(
-                      'per hari',
-                      style: TextStyle(
-                        fontSize: 9,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              ElevatedButton(
-                onPressed: () => _showCarDetail(car),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: blue,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 13,
-                    vertical: 11,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(9),
-                  ),
-                ),
-                child: const Text(
-                  'Pilih & Detail >',
-                  style: TextStyle(fontSize: 11),
-                ),
-              ),
-            ],
-          ),
-        ],
+                    Text((data['category'] ?? 'Mobil pilihan').toString().toUpperCase(),
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 10,
+                            letterSpacing: .7, color: Color(0xFF747C8B))),
+                    const SizedBox(height: 5),
+                    Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 14,
+                            fontWeight: FontWeight.w600, color: dark)),
+                    const SizedBox(height: 7),
+                    Wrap(spacing: 12, runSpacing: 4, children: [
+                      _infoItem(Icons.settings_outlined,
+                          (data['transmission'] ?? '-').toString()),
+                      _infoItem(Icons.people_outline,
+                          "${data['capacity'] ?? '-'} Kursi"),
+                    ]),
+                    const SizedBox(height: 8),
+                    const Text('Mulai dari', style: TextStyle(fontSize: 10,
+                        color: Color(0xFF747C8B))),
+                    Row(children: [
+                      Expanded(child: Text.rich(TextSpan(children: [
+                        TextSpan(text: price, style: const TextStyle(fontSize: 16,
+                            fontWeight: FontWeight.w700, color: blue)),
+                        const TextSpan(text: ' /hari', style: TextStyle(
+                            fontSize: 10, color: Color(0xFF747C8B))),
+                      ]), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                      const CircleAvatar(radius: 16,
+                          backgroundColor: Color(0xFFEAF2FF),
+                          child: Icon(Icons.arrow_forward, size: 19, color: blue)),
+                    ]),
+                  ])),
+        ])
+            : Padding(padding: const EdgeInsets.all(14),
+            child: Column(children: [
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(name, style: const TextStyle(fontSize: 15,
+                      fontWeight: FontWeight.w600, color: dark)),
+                  const SizedBox(height: 5),
+                  Text('Tahun $year', style: const TextStyle(fontSize: 11,
+                      color: Color(0xFF747C8B))),
+                  const SizedBox(height: 7),
+                  _infoItem(Icons.settings_outlined,
+                      (data['transmission'] ?? '-').toString()),
+                  const SizedBox(height: 5),
+                  _infoItem(Icons.people_outline,
+                      "${data['capacity'] ?? '-'} Kursi"),
+                ])),
+                const SizedBox(width: 12),
+                ClipRRect(borderRadius: BorderRadius.circular(10),
+                    child: SizedBox(width: 115,
+                        child: _carImage(image, height: 80))),
+              ]),
+              const SizedBox(height: 12),
+              Row(children: [
+                Expanded(child: Text.rich(TextSpan(children: [
+                  TextSpan(text: price, style: const TextStyle(fontSize: 17,
+                      fontWeight: FontWeight.w700, color: dark)),
+                  const TextSpan(text: ' /hari', style: TextStyle(fontSize: 10)),
+                ]))),
+                const SizedBox(width: 8),
+                FilledButton(onPressed: () => _showCarDetail(car),
+                    style: FilledButton.styleFrom(backgroundColor: blue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 13)),
+                    child: const Text('Pilih & Detail →',
+                        style: TextStyle(fontSize: 11))),
+              ]),
+            ])),
       ),
     );
   }
+
+  Widget _badge(String label, Color background, Color foreground) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+    decoration: BoxDecoration(color: background,
+        borderRadius: BorderRadius.circular(20)),
+    child: Text(label, style: TextStyle(fontSize: 10, color: foreground)),
+  );
 
   // ==========================================
   // DETAIL MOBIL
   // ==========================================
 
   void _showCarDetail(
-    QueryDocumentSnapshot<Map<String, dynamic>> car,
-  ) {
+      QueryDocumentSnapshot<Map<String, dynamic>> car,
+      ) {
     context.push('/detail/${car.id}');
   }
 
@@ -541,85 +537,63 @@ class _HomeScreenState extends State<HomeScreen> {
   // ==========================================
 
   Widget _buildResults() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(
-              Icons.circle,
-              size: 8,
-              color: blue,
-            ),
-            const SizedBox(width: 7),
-            const Expanded(
-              child: Text(
-                'Mobil Tersedia',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            Text(
-              '${_cars.length} Mobil',
-              style: const TextStyle(
-                fontSize: 11,
-                color: blue,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 5),
-        Text(
-          '${_formatDate(_startDate)} - ${_formatDate(_endDate)}',
-          style: const TextStyle(
-            fontSize: 10,
-            color: Colors.grey,
-          ),
-        ),
-        const SizedBox(height: 13),
-        if (_cars.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(25),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(13),
-            ),
-            child: const Column(
-              children: [
-                Icon(
-                  Icons.directions_car_outlined,
-                  size: 48,
-                  color: Colors.grey,
-                ),
-                SizedBox(height: 10),
-                Text(
-                  'Mobil belum tersedia',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 5),
-                Text(
-                  'Belum ada mobil dengan status available.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
-            ),
-          )
-        else
-          ..._cars.map((car) => _carCard(car)),
+    if (_cars.isEmpty) {
+      return const Padding(padding: EdgeInsets.all(24),
+          child: Center(child: Text('Belum ada mobil dengan status tersedia.')));
+    }
+    // Flag isPopular opsional; jika tidak ada, gunakan empat mobil pertama.
+    final flagged = _cars.where((car) => car.data()['isPopular'] == true).toList();
+    final popular = (flagged.isEmpty ? _cars : flagged).take(4).toList();
+    final sorted = [..._cars]..sort((a, b) =>
+        _priceValue(a.data()['pricePerDay']).compareTo(
+            _priceValue(b.data()['pricePerDay'])));
+    final catalog = sorted.take(5).toList();
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Text('Mobil Populer', style: TextStyle(fontSize: 18,
+          fontWeight: FontWeight.w600, color: dark)),
+      const SizedBox(height: 4),
+      const Text('Pilihan mobil untuk perjalananmu', style: TextStyle(
+          fontSize: 11, color: Color(0xFF858B96))),
+      const SizedBox(height: 12),
+      // Hanya bagian ini yang scroll horizontal. Tinggi mengikuti skala teks.
+      SizedBox(
+        height: 118 + 146 * MediaQuery.textScalerOf(context).scale(1),
+        child: LayoutBuilder(builder: (context, constraints) {
+          final width = (constraints.maxWidth * .72).clamp(215.0, 255.0).toDouble();
+          return ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: popular.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 13),
+            itemBuilder: (context, index) => SizedBox(width: width,
+                child: _carCard(popular[index], popular: true)),
+          );
+        }),
+      ),
+      const SizedBox(height: 14),
+      const Row(children: [
+        Icon(Icons.circle, size: 7, color: blue),
+        SizedBox(width: 7),
+        Expanded(child: Text('Keseluruhan', style: TextStyle(
+            fontSize: 13, fontWeight: FontWeight.w600))),
+        Text('Termurah ke termahal', style: TextStyle(fontSize: 10, color: blue)),
+        SizedBox(width: 3),
+        Icon(Icons.sort, size: 15, color: blue),
+      ]),
+      const SizedBox(height: 6),
+      Text('${catalog.length} mobil • ${_formatDate(_startDate)} – ${_formatDate(_endDate)}',
+          style: const TextStyle(fontSize: 10, color: Color(0xFF858B96))),
+      const SizedBox(height: 12),
+      // Kartu mengikuti ListView utama, tanpa scroll vertikal bersarang.
+      for (final car in catalog) ...[
+        _carCard(car),
+        const SizedBox(height: 12),
       ],
-    );
+    ]);
   }
+
+  num _priceValue(dynamic value) => value is num
+      ? value : num.tryParse(value?.toString() ?? '') ?? 0;
 
   // ==========================================
   // HEADER

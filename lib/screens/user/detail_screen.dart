@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'verification_screen.dart';
 import 'package:go_router/go_router.dart';
 
 class DetailScreen extends StatelessWidget {
@@ -366,7 +367,7 @@ class DetailScreen extends StatelessWidget {
               if (context.canPop()) {
                 context.pop();
               } else {
-                context.go('/');
+                context.go('/home');
               }
             },
             icon: const Icon(
@@ -409,23 +410,23 @@ class DetailScreen extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: imageUrl.isNotEmpty
           ? Image.network(
-              imageUrl,
-              fit: BoxFit.cover,
-              loadingBuilder: (context, child, progress) {
-                if (progress == null) {
-                  return child;
-                }
+        imageUrl,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, progress) {
+          if (progress == null) {
+            return child;
+          }
 
-                return const Center(
-                  child: CircularProgressIndicator(
-                    color: primaryColor,
-                  ),
-                );
-              },
-              errorBuilder: (context, error, stackTrace) {
-                return _imagePlaceholder();
-              },
-            )
+          return const Center(
+            child: CircularProgressIndicator(
+              color: primaryColor,
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return _imagePlaceholder();
+        },
+      )
           : _imagePlaceholder(),
     );
   }
@@ -489,7 +490,7 @@ class DetailScreen extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 color:
-                    available ? Colors.green.shade800 : Colors.orange.shade800,
+                available ? Colors.green.shade800 : Colors.orange.shade800,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -619,9 +620,9 @@ class DetailScreen extends StatelessWidget {
 
   // RENTAL TERMS
   Widget _termCard(
-    IconData icon,
-    String text,
-  ) {
+      IconData icon,
+      String text,
+      ) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -653,10 +654,10 @@ class DetailScreen extends StatelessWidget {
 
   // BOTTOM PRICE
   Widget _buildBottomPrice(
-    BuildContext context,
-    int pricePerDay,
-    bool available,
-  ) {
+      BuildContext context,
+      int pricePerDay,
+      bool available,
+      ) {
     return Container(
       padding: const EdgeInsets.fromLTRB(
         18,
@@ -716,15 +717,7 @@ class DetailScreen extends StatelessWidget {
               height: 48,
               child: ElevatedButton(
                 onPressed: available
-                    ? () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Fitur pilih tanggal akan segera tersedia.',
-                            ),
-                          ),
-                        );
-                      }
+                    ? () => _openServiceSheet(context)
                     : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,
@@ -740,7 +733,7 @@ class DetailScreen extends StatelessWidget {
                 child: const Row(
                   children: [
                     Text(
-                      'Pilih Tanggal',
+                      'Lanjutkan Pesanan',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -761,11 +754,34 @@ class DetailScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _openServiceSheet(BuildContext context) async {
+    final service = await showModalBottomSheet<String>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withOpacity(0.5),
+      builder: (_) => const PilihLayananSheet(),
+    );
+    if (!context.mounted || service == null) return;
+
+    if (service == 'lepas_kunci') {
+      await Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => VerificationScreen(carId: carId),
+      ));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Layanan Dengan Sopir dipilih. Alur pemesanan belum terhubung.')),
+      );
+    }
+  }
+
+
   // ERROR VIEW
   Widget _errorView(
-    BuildContext context,
-    String message,
-  ) {
+      BuildContext context,
+      String message,
+      ) {
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
@@ -794,7 +810,7 @@ class DetailScreen extends StatelessWidget {
                   if (context.canPop()) {
                     context.pop();
                   } else {
-                    context.go('/');
+                    context.go('/home');
                   }
                 },
                 child: const Text('Kembali'),
@@ -854,3 +870,119 @@ class DetailScreen extends StatelessWidget {
     return 'Rp$result';
   }
 }
+
+class PilihLayananSheet extends StatefulWidget {
+  const PilihLayananSheet({super.key});
+
+  @override
+  State<PilihLayananSheet> createState() => _PilihLayananSheetState();
+}
+
+class _PilihLayananSheetState extends State<PilihLayananSheet> {
+  String _service = 'lepas_kunci';
+  static const _blue = Color(0xFF005BCB);
+  static const _muted = Color(0xFF7C879D);
+
+  Widget _option(String value, String title, String description, String price) {
+    final selected = _service == value;
+    return Semantics(
+      selected: selected,
+      button: true,
+      child: Material(
+        color: selected ? const Color(0xFFEAF2FF) : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(
+            color: selected ? _blue : const Color(0xFFDFE5F0),
+            width: selected ? 1.8 : 1,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => setState(() => _service = value),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 3),
+                child: Icon(selected ? Icons.radio_button_checked
+                    : Icons.radio_button_off,
+                    color: selected ? _blue : const Color(0xFFA7B2C5), size: 23),
+              ),
+              const SizedBox(width: 12),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontSize: 15,
+                      fontWeight: FontWeight.w600, color: Color(0xFF252830))),
+                  const SizedBox(height: 5),
+                  Text(description, style: const TextStyle(
+                      fontSize: 12, color: _muted)),
+                  const SizedBox(height: 12),
+                  Text(price, style: TextStyle(fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: selected ? _blue : _muted)),
+                ],
+              )),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * .9),
+      decoration: const BoxDecoration(color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      child: SafeArea(top: false,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+            child: Column(mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  Center(child: Container(width: 54, height: 5,
+                      decoration: BoxDecoration(color: const Color(0xFFD1D7E3),
+                          borderRadius: BorderRadius.circular(10)))),
+                  const SizedBox(height: 12),
+                  Row(children: [
+                    const Expanded(child: Text('Pilih jenis layanan',
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700,
+                            color: Color(0xFF252830)))),
+                    IconButton(onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close, color: _muted), tooltip: 'Tutup'),
+                  ]),
+                  const Text('Tentukan cara kamu menggunakan mobil ini.',
+                      style: TextStyle(fontSize: 12, color: _muted)),
+                  const SizedBox(height: 16),
+                  _option('lepas_kunci', 'Lepas Kunci',
+                      'Mengemudi sendiri tanpa sopir', 'Tanpa biaya sopir tambahan'),
+                  const SizedBox(height: 10),
+                  _option('dengan_sopir', 'Dengan Sopir',
+                      'Perjalanan dibantu sopir profesional', '+ Rp150.000 / hari'),
+                  const SizedBox(height: 10),
+                  const Divider(height: 1, color: Color(0xFFE3E8F2)),
+                  const SizedBox(height: 18),
+                  SizedBox(height: 48,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context, _service),
+                        style: ElevatedButton.styleFrom(backgroundColor: _blue,
+                            foregroundColor: Colors.white, elevation: 0,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12))),
+                        child: const Row(mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text('Lanjutkan', style: TextStyle(fontSize: 14,
+                                  fontWeight: FontWeight.w600)),
+                              SizedBox(width: 8),
+                              Icon(Icons.arrow_forward, size: 18),
+                            ]),
+                      )),
+                ]),
+          )),
+    );
+  }
+}
+
