@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'verification_screen.dart';
 import 'package:go_router/go_router.dart';
@@ -410,23 +411,23 @@ class DetailScreen extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: imageUrl.isNotEmpty
           ? Image.network(
-        imageUrl,
-        fit: BoxFit.cover,
-        loadingBuilder: (context, child, progress) {
-          if (progress == null) {
-            return child;
-          }
+              imageUrl,
+              fit: BoxFit.cover,
+              loadingBuilder: (context, child, progress) {
+                if (progress == null) {
+                  return child;
+                }
 
-          return const Center(
-            child: CircularProgressIndicator(
-              color: primaryColor,
-            ),
-          );
-        },
-        errorBuilder: (context, error, stackTrace) {
-          return _imagePlaceholder();
-        },
-      )
+                return const Center(
+                  child: CircularProgressIndicator(
+                    color: primaryColor,
+                  ),
+                );
+              },
+              errorBuilder: (context, error, stackTrace) {
+                return _imagePlaceholder();
+              },
+            )
           : _imagePlaceholder(),
     );
   }
@@ -490,7 +491,7 @@ class DetailScreen extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 color:
-                available ? Colors.green.shade800 : Colors.orange.shade800,
+                    available ? Colors.green.shade800 : Colors.orange.shade800,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -620,9 +621,9 @@ class DetailScreen extends StatelessWidget {
 
   // RENTAL TERMS
   Widget _termCard(
-      IconData icon,
-      String text,
-      ) {
+    IconData icon,
+    String text,
+  ) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -654,10 +655,10 @@ class DetailScreen extends StatelessWidget {
 
   // BOTTOM PRICE
   Widget _buildBottomPrice(
-      BuildContext context,
-      int pricePerDay,
-      bool available,
-      ) {
+    BuildContext context,
+    int pricePerDay,
+    bool available,
+  ) {
     return Container(
       padding: const EdgeInsets.fromLTRB(
         18,
@@ -716,9 +717,7 @@ class DetailScreen extends StatelessWidget {
             SizedBox(
               height: 48,
               child: ElevatedButton(
-                onPressed: available
-                    ? () => _openServiceSheet(context)
-                    : null,
+                onPressed: available ? () => _openServiceSheet(context) : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,
                   foregroundColor: Colors.white,
@@ -765,23 +764,52 @@ class DetailScreen extends StatelessWidget {
     );
     if (!context.mounted || service == null) return;
 
-    if (service == 'lepas_kunci') {
-      await Navigator.of(context).push(MaterialPageRoute<void>(
-        builder: (_) => VerificationScreen(carId: carId),
-      ));
-    } else {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Layanan Dengan Sopir dipilih. Alur pemesanan belum terhubung.')),
+        const SnackBar(content: Text('Silakan login terlebih dahulu untuk melanjutkan.')),
       );
+      return;
+    }
+
+    if (service == 'lepas_kunci') {
+      try {
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        final userData = userDoc.data();
+        final verificationStatus = (userData?['verificationStatus'] as String?)?.toLowerCase() ?? 'unverified';
+
+        if (!context.mounted) return;
+
+        if (verificationStatus == 'verified') {
+          context.push('/ringkasan-pesanan/$carId');
+        } else if (verificationStatus == 'pending') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Dokumen verifikasi kamu sedang ditinjau admin. Harap tunggu persetujuan sebelum memesan lepas kunci.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        } else {
+          await Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => VerificationScreen(carId: carId),
+          ));
+        }
+      } catch (e) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memeriksa status verifikasi: $e')),
+        );
+      }
+    } else {
+      context.push('/ringkasan-pesanan/$carId?withDriver=true');
     }
   }
 
-
   // ERROR VIEW
   Widget _errorView(
-      BuildContext context,
-      String message,
-      ) {
+    BuildContext context,
+    String message,
+  ) {
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
@@ -905,23 +933,32 @@ class _PilihLayananSheetState extends State<PilihLayananSheet> {
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Padding(
                 padding: const EdgeInsets.only(top: 3),
-                child: Icon(selected ? Icons.radio_button_checked
-                    : Icons.radio_button_off,
-                    color: selected ? _blue : const Color(0xFFA7B2C5), size: 23),
+                child: Icon(
+                    selected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
+                    color: selected ? _blue : const Color(0xFFA7B2C5),
+                    size: 23),
               ),
               const SizedBox(width: 12),
-              Expanded(child: Column(
+              Expanded(
+                  child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontSize: 15,
-                      fontWeight: FontWeight.w600, color: Color(0xFF252830))),
+                  Text(title,
+                      style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF252830))),
                   const SizedBox(height: 5),
-                  Text(description, style: const TextStyle(
-                      fontSize: 12, color: _muted)),
+                  Text(description,
+                      style: const TextStyle(fontSize: 12, color: _muted)),
                   const SizedBox(height: 12),
-                  Text(price, style: TextStyle(fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: selected ? _blue : _muted)),
+                  Text(price,
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: selected ? _blue : _muted)),
                 ],
               )),
             ]),
@@ -934,48 +971,73 @@ class _PilihLayananSheetState extends State<PilihLayananSheet> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * .9),
-      decoration: const BoxDecoration(color: Colors.white,
+      constraints:
+          BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .9),
+      decoration: const BoxDecoration(
+          color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      child: SafeArea(top: false,
+      child: SafeArea(
+          top: false,
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
-            child: Column(mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  Center(child: Container(width: 54, height: 5,
-                      decoration: BoxDecoration(color: const Color(0xFFD1D7E3),
-                          borderRadius: BorderRadius.circular(10)))),
+            child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                      child: Container(
+                          width: 54,
+                          height: 5,
+                          decoration: BoxDecoration(
+                              color: const Color(0xFFD1D7E3),
+                              borderRadius: BorderRadius.circular(10)))),
                   const SizedBox(height: 12),
                   Row(children: [
-                    const Expanded(child: Text('Pilih jenis layanan',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700,
-                            color: Color(0xFF252830)))),
-                    IconButton(onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close, color: _muted), tooltip: 'Tutup'),
+                    const Expanded(
+                        child: Text('Pilih jenis layanan',
+                            style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF252830)))),
+                    IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close, color: _muted),
+                        tooltip: 'Tutup'),
                   ]),
                   const Text('Tentukan cara kamu menggunakan mobil ini.',
                       style: TextStyle(fontSize: 12, color: _muted)),
                   const SizedBox(height: 16),
-                  _option('lepas_kunci', 'Lepas Kunci',
-                      'Mengemudi sendiri tanpa sopir', 'Tanpa biaya sopir tambahan'),
+                  _option(
+                      'lepas_kunci',
+                      'Lepas Kunci',
+                      'Mengemudi sendiri tanpa sopir',
+                      'Tanpa biaya sopir tambahan'),
                   const SizedBox(height: 10),
-                  _option('dengan_sopir', 'Dengan Sopir',
-                      'Perjalanan dibantu sopir profesional', '+ Rp150.000 / hari'),
+                  _option(
+                      'dengan_sopir',
+                      'Dengan Sopir',
+                      'Perjalanan dibantu sopir profesional',
+                      '+ Rp150.000 / hari'),
                   const SizedBox(height: 10),
                   const Divider(height: 1, color: Color(0xFFE3E8F2)),
                   const SizedBox(height: 18),
-                  SizedBox(height: 48,
+                  SizedBox(
+                      height: 48,
                       child: ElevatedButton(
                         onPressed: () => Navigator.pop(context, _service),
-                        style: ElevatedButton.styleFrom(backgroundColor: _blue,
-                            foregroundColor: Colors.white, elevation: 0,
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: _blue,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12))),
-                        child: const Row(mainAxisAlignment: MainAxisAlignment.center,
+                        child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text('Lanjutkan', style: TextStyle(fontSize: 14,
-                                  fontWeight: FontWeight.w600)),
+                              Text('Lanjutkan',
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600)),
                               SizedBox(width: 8),
                               Icon(Icons.arrow_forward, size: 18),
                             ]),
@@ -985,4 +1047,3 @@ class _PilihLayananSheetState extends State<PilihLayananSheet> {
     );
   }
 }
-

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
+import '../../utils/app_constants.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -10,14 +11,13 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  static const Color blue = Color(0xFF005BCB);
-  static const Color dark = Color(0xFF202124);
+  static const Color blue = AppColors.primaryBlue;
+  static const Color dark = AppColors.textDark;
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   bool _isLoading = false;
   bool _hasSearched = false;
-  bool _withDriver = false;
 
   DateTime? _startDate;
   DateTime? _endDate;
@@ -25,42 +25,11 @@ class _HomeScreenState extends State<HomeScreen> {
   List<QueryDocumentSnapshot<Map<String, dynamic>>> _cars = [];
 
   // ==========================================
-  // FORMAT HARGA
+  // FORMAT HARGA & TANGGAL
   // ==========================================
 
-  String _formatPrice(dynamic price) {
-    final value = _priceValue(price).toInt();
-
-    return 'Rp${value.toString().replaceAllMapped(
-      RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-          (m) => '${m[1]}.',
-    )}';
-  }
-
-  // ==========================================
-  // FORMAT TANGGAL
-  // ==========================================
-
-  String _formatDate(DateTime? date) {
-    if (date == null) return 'Pilih Tanggal';
-
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'Mei',
-      'Jun',
-      'Jul',
-      'Agu',
-      'Sep',
-      'Okt',
-      'Nov',
-      'Des'
-    ];
-
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
-  }
+  String _formatPrice(dynamic price) => AppFormatters.rupiah(price);
+  String _formatDate(DateTime? date) => AppFormatters.dateWithYear(date);
 
   // ==========================================
   // PILIH TANGGAL
@@ -78,11 +47,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final firstDate = isStart
         ? today
         : (_startDate ?? today).add(
-      const Duration(days: 1),
-    );
+            const Duration(days: 1),
+          );
 
     final initialDate =
-    isStart ? (_startDate ?? today) : (_endDate ?? firstDate);
+        isStart ? (_startDate ?? today) : (_endDate ?? firstDate);
 
     final selected = await showDatePicker(
       context: context,
@@ -198,9 +167,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _carImage(
-      String url, {
-        double height = 150,
-      }) {
+    String url, {
+    double height = 150,
+  }) {
     if (url.isEmpty) {
       return Container(
         height: height,
@@ -281,36 +250,6 @@ class _HomeScreenState extends State<HomeScreen> {
   // FORM PENCARIAN
   // ==========================================
 
-  Widget _rentalMode(String label, bool withDriver) {
-    final selected = _withDriver == withDriver;
-    return Expanded(
-      child: Semantics(
-        selected: selected,
-        button: true,
-        child: Material(
-          color: selected ? blue : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(10),
-            onTap: _isLoading ? null : () {
-              setState(() {
-                _withDriver = withDriver;
-                _hasSearched = false;
-                _cars.clear();
-              });
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text(label, textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
-                      color: selected ? Colors.white : const Color(0xFF465047))),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildSearchCard() {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -323,18 +262,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEEEEF1),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Row(children: [
-              _rentalMode('Lepas Kunci', false),
-              _rentalMode('Dengan Sopir', true),
-            ]),
-          ),
-          const SizedBox(height: 10),
           Row(
             children: [
               _dateBox(
@@ -358,13 +285,13 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: _isLoading ? null : _searchCars,
               icon: _isLoading
                   ? const SizedBox(
-                height: 16,
-                width: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              )
+                      height: 16,
+                      width: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
                   : const Icon(Icons.search, size: 17),
               label: Text(
                 _isLoading ? 'Mencari Mobil...' : 'Cari Mobil Tersedia',
@@ -423,112 +350,159 @@ class _HomeScreenState extends State<HomeScreen> {
     final border = BorderRadius.circular(16);
     return Material(
       color: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: border,
+      shape: RoundedRectangleBorder(
+          borderRadius: border,
           side: const BorderSide(color: Color(0xFFECECF1))),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => _showCarDetail(car),
         child: popular
             ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Stack(children: [
-            _carImage(image, height: 108),
-            Positioned(top: 10, left: 10, child: Row(children: [
-              _badge(year, Colors.white, const Color(0xFF747C8B)),
-              const SizedBox(width: 5),
-              _badge('🔥 Populer', const Color(0xFFFFF3E8),
-                  const Color(0xFFD76200)),
-            ])),
-          ]),
-          Padding(padding: const EdgeInsets.all(10),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text((data['category'] ?? 'Mobil pilihan').toString().toUpperCase(),
-                        maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 10,
-                            letterSpacing: .7, color: Color(0xFF747C8B))),
-                    const SizedBox(height: 5),
-                    Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 14,
-                            fontWeight: FontWeight.w600, color: dark)),
-                    const SizedBox(height: 7),
-                    Wrap(spacing: 12, runSpacing: 4, children: [
-                      _infoItem(Icons.settings_outlined,
-                          (data['transmission'] ?? '-').toString()),
-                      _infoItem(Icons.people_outline,
-                          "${data['capacity'] ?? '-'} Kursi"),
-                    ]),
-                    const SizedBox(height: 8),
-                    const Text('Mulai dari', style: TextStyle(fontSize: 10,
-                        color: Color(0xFF747C8B))),
-                    Row(children: [
-                      Expanded(child: Text.rich(TextSpan(children: [
-                        TextSpan(text: price, style: const TextStyle(fontSize: 16,
-                            fontWeight: FontWeight.w700, color: blue)),
-                        const TextSpan(text: ' /hari', style: TextStyle(
-                            fontSize: 10, color: Color(0xFF747C8B))),
-                      ]), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                      const CircleAvatar(radius: 16,
-                          backgroundColor: Color(0xFFEAF2FF),
-                          child: Icon(Icons.arrow_forward, size: 19, color: blue)),
-                    ]),
-                  ])),
-        ])
-            : Padding(padding: const EdgeInsets.all(14),
-            child: Column(children: [
-              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Expanded(child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(name, style: const TextStyle(fontSize: 15,
-                      fontWeight: FontWeight.w600, color: dark)),
-                  const SizedBox(height: 5),
-                  Text('Tahun $year', style: const TextStyle(fontSize: 11,
-                      color: Color(0xFF747C8B))),
-                  const SizedBox(height: 7),
-                  _infoItem(Icons.settings_outlined,
-                      (data['transmission'] ?? '-').toString()),
-                  const SizedBox(height: 5),
-                  _infoItem(Icons.people_outline,
-                      "${data['capacity'] ?? '-'} Kursi"),
+                Stack(children: [
+                  _carImage(image, height: 108),
+                  Positioned(
+                      top: 10,
+                      left: 10,
+                      child: Row(children: [
+                        _badge(year, Colors.white, const Color(0xFF747C8B)),
+                        const SizedBox(width: 5),
+                        _badge('🔥 Populer', const Color(0xFFFFF3E8),
+                            const Color(0xFFD76200)),
+                      ])),
+                ]),
+                Padding(
+                    padding: const EdgeInsets.all(10),
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                              (data['category'] ?? 'Mobil pilihan')
+                                  .toString()
+                                  .toUpperCase(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontSize: 10,
+                                  letterSpacing: .7,
+                                  color: Color(0xFF747C8B))),
+                          const SizedBox(height: 5),
+                          Text(name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: dark)),
+                          const SizedBox(height: 7),
+                          Wrap(spacing: 12, runSpacing: 4, children: [
+                            _infoItem(Icons.settings_outlined,
+                                (data['transmission'] ?? '-').toString()),
+                            _infoItem(Icons.people_outline,
+                                "${data['capacity'] ?? '-'} Kursi"),
+                          ]),
+                          const SizedBox(height: 8),
+                          const Text('Mulai dari',
+                              style: TextStyle(
+                                  fontSize: 10, color: Color(0xFF747C8B))),
+                          Row(children: [
+                            Expanded(
+                                child: Text.rich(
+                                    TextSpan(children: [
+                                      TextSpan(
+                                          text: price,
+                                          style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w700,
+                                              color: blue)),
+                                      const TextSpan(
+                                          text: ' /hari',
+                                          style: TextStyle(
+                                              fontSize: 10,
+                                              color: Color(0xFF747C8B))),
+                                    ]),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis)),
+                            const CircleAvatar(
+                                radius: 16,
+                                backgroundColor: Color(0xFFEAF2FF),
+                                child: Icon(Icons.arrow_forward,
+                                    size: 19, color: blue)),
+                          ]),
+                        ])),
+              ])
+            : Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(children: [
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Expanded(
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                          Text(name,
+                              style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: dark)),
+                          const SizedBox(height: 5),
+                          Text('Tahun $year',
+                              style: const TextStyle(
+                                  fontSize: 11, color: Color(0xFF747C8B))),
+                          const SizedBox(height: 7),
+                          _infoItem(Icons.settings_outlined,
+                              (data['transmission'] ?? '-').toString()),
+                          const SizedBox(height: 5),
+                          _infoItem(Icons.people_outline,
+                              "${data['capacity'] ?? '-'} Kursi"),
+                        ])),
+                    const SizedBox(width: 12),
+                    ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: SizedBox(
+                            width: 115, child: _carImage(image, height: 80))),
+                  ]),
+                  const SizedBox(height: 12),
+                  Row(children: [
+                    Expanded(
+                        child: Text.rich(TextSpan(children: [
+                      TextSpan(
+                          text: price,
+                          style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: dark)),
+                      const TextSpan(
+                          text: ' /hari', style: TextStyle(fontSize: 10)),
+                    ]))),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                        onPressed: () => _showCarDetail(car),
+                        style: FilledButton.styleFrom(
+                            backgroundColor: blue,
+                            foregroundColor: Colors.white,
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 13)),
+                        child: const Text('Pilih & Detail →',
+                            style: TextStyle(fontSize: 11))),
+                  ]),
                 ])),
-                const SizedBox(width: 12),
-                ClipRRect(borderRadius: BorderRadius.circular(10),
-                    child: SizedBox(width: 115,
-                        child: _carImage(image, height: 80))),
-              ]),
-              const SizedBox(height: 12),
-              Row(children: [
-                Expanded(child: Text.rich(TextSpan(children: [
-                  TextSpan(text: price, style: const TextStyle(fontSize: 17,
-                      fontWeight: FontWeight.w700, color: dark)),
-                  const TextSpan(text: ' /hari', style: TextStyle(fontSize: 10)),
-                ]))),
-                const SizedBox(width: 8),
-                FilledButton(onPressed: () => _showCarDetail(car),
-                    style: FilledButton.styleFrom(backgroundColor: blue,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 13)),
-                    child: const Text('Pilih & Detail →',
-                        style: TextStyle(fontSize: 11))),
-              ]),
-            ])),
       ),
     );
   }
 
   Widget _badge(String label, Color background, Color foreground) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-    decoration: BoxDecoration(color: background,
-        borderRadius: BorderRadius.circular(20)),
-    child: Text(label, style: TextStyle(fontSize: 10, color: foreground)),
-  );
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        decoration: BoxDecoration(
+            color: background, borderRadius: BorderRadius.circular(20)),
+        child: Text(label, style: TextStyle(fontSize: 10, color: foreground)),
+      );
 
   // ==========================================
   // DETAIL MOBIL
   // ==========================================
 
   void _showCarDetail(
-      QueryDocumentSnapshot<Map<String, dynamic>> car,
-      ) {
+    QueryDocumentSnapshot<Map<String, dynamic>> car,
+  ) {
     context.push('/detail/${car.id}');
   }
 
@@ -538,50 +512,61 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildResults() {
     if (_cars.isEmpty) {
-      return const Padding(padding: EdgeInsets.all(24),
-          child: Center(child: Text('Belum ada mobil dengan status tersedia.')));
+      return const Padding(
+          padding: EdgeInsets.all(24),
+          child:
+              Center(child: Text('Belum ada mobil dengan status tersedia.')));
     }
-    // Flag isPopular opsional; jika tidak ada, gunakan empat mobil pertama.
-    final flagged = _cars.where((car) => car.data()['isPopular'] == true).toList();
-    final popular = (flagged.isEmpty ? _cars : flagged).take(4).toList();
+    // Khusus mobil yang memiliki status isPopular == true
+    final popular = _cars.where((car) {
+      final isPop = car.data()['isPopular'];
+      return isPop == true || isPop?.toString().toLowerCase() == 'true';
+    }).toList();
     final sorted = [..._cars]..sort((a, b) =>
-        _priceValue(a.data()['pricePerDay']).compareTo(
-            _priceValue(b.data()['pricePerDay'])));
+        _priceValue(a.data()['pricePerDay'])
+            .compareTo(_priceValue(b.data()['pricePerDay'])));
     final catalog = sorted.take(5).toList();
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('Mobil Populer', style: TextStyle(fontSize: 18,
-          fontWeight: FontWeight.w600, color: dark)),
-      const SizedBox(height: 4),
-      const Text('Pilihan mobil untuk perjalananmu', style: TextStyle(
-          fontSize: 11, color: Color(0xFF858B96))),
-      const SizedBox(height: 12),
-      // Hanya bagian ini yang scroll horizontal. Tinggi mengikuti skala teks.
-      SizedBox(
-        height: 118 + 146 * MediaQuery.textScalerOf(context).scale(1),
-        child: LayoutBuilder(builder: (context, constraints) {
-          final width = (constraints.maxWidth * .72).clamp(215.0, 255.0).toDouble();
-          return ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: popular.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 13),
-            itemBuilder: (context, index) => SizedBox(width: width,
-                child: _carCard(popular[index], popular: true)),
-          );
-        }),
-      ),
-      const SizedBox(height: 14),
+      if (popular.isNotEmpty) ...[
+        const Text('Mobil Populer',
+            style: TextStyle(
+                fontSize: 18, fontWeight: FontWeight.w600, color: dark)),
+        const SizedBox(height: 4),
+        const Text('Pilihan mobil untuk perjalananmu',
+            style: TextStyle(fontSize: 11, color: Color(0xFF858B96))),
+        const SizedBox(height: 12),
+        // Hanya bagian ini yang scroll horizontal. Tinggi mengikuti skala teks.
+        SizedBox(
+          height: 118 + 146 * MediaQuery.textScalerOf(context).scale(1),
+          child: LayoutBuilder(builder: (context, constraints) {
+            final width =
+                (constraints.maxWidth * .72).clamp(215.0, 255.0).toDouble();
+            return ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: popular.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 13),
+              itemBuilder: (context, index) => SizedBox(
+                  width: width, child: _carCard(popular[index], popular: true)),
+            );
+          }),
+        ),
+        const SizedBox(height: 14),
+      ],
       const Row(children: [
         Icon(Icons.circle, size: 7, color: blue),
         SizedBox(width: 7),
-        Expanded(child: Text('Keseluruhan', style: TextStyle(
-            fontSize: 13, fontWeight: FontWeight.w600))),
-        Text('Termurah ke termahal', style: TextStyle(fontSize: 10, color: blue)),
+        Expanded(
+            child: Text('Keseluruhan',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
+        Text('Termurah ke termahal',
+            style: TextStyle(fontSize: 10, color: blue)),
         SizedBox(width: 3),
         Icon(Icons.sort, size: 15, color: blue),
       ]),
       const SizedBox(height: 6),
-      Text('${catalog.length} mobil • ${_formatDate(_startDate)} – ${_formatDate(_endDate)}',
+      Text(
+          '${catalog.length} mobil • ${_formatDate(_startDate)} – ${_formatDate(_endDate)}',
           style: const TextStyle(fontSize: 10, color: Color(0xFF858B96))),
       const SizedBox(height: 12),
       // Kartu mengikuti ListView utama, tanpa scroll vertikal bersarang.
@@ -592,16 +577,16 @@ class _HomeScreenState extends State<HomeScreen> {
     ]);
   }
 
-  num _priceValue(dynamic value) => value is num
-      ? value : num.tryParse(value?.toString() ?? '') ?? 0;
+  num _priceValue(dynamic value) =>
+      value is num ? value : num.tryParse(value?.toString() ?? '') ?? 0;
 
   // ==========================================
   // HEADER
   // ==========================================
 
   Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
+    return const Padding(
+      padding: EdgeInsets.symmetric(
         horizontal: 15,
         vertical: 5,
       ),
@@ -610,26 +595,19 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Icon(
+            Text(
+              'NOV RENT',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+                color: dark,
+              ),
+            ),
+            Icon(
               Icons.notifications_none,
               size: 22,
               color: dark,
-            ),
-            const Text(
-              'NOV RENT',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const CircleAvatar(
-              radius: 15,
-              backgroundColor: Color(0xFFE1E7F2),
-              child: Icon(
-                Icons.person,
-                size: 19,
-                color: blue,
-              ),
             ),
           ],
         ),

@@ -6,6 +6,8 @@ import '../screens/user/home_screen.dart';
 import '../screens/user/katalog_screen.dart';
 import '../screens/user/account_screen.dart';
 import '../screens/user/detail_screen.dart';
+import '../screens/user/ringkasan_pesanan_screen.dart';
+import '../screens/user/konfirmasi_pembayaran_screen.dart';
 import '../screens/login_screen.dart';
 import '../widget/main_shell.dart';
 import '../screens/register_screen.dart';
@@ -84,6 +86,29 @@ final GoRouter appRouter = GoRouter(
 
         return DetailScreen(
           carId: id,
+        );
+      },
+    ),
+    GoRoute(
+      path: '/ringkasan-pesanan/:id',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final id = state.pathParameters['id']!;
+        final withDriver = state.uri.queryParameters['withDriver'] == 'true';
+
+        return RingkasanPesananScreen(
+          carId: id,
+          withDriver: withDriver,
+        );
+      },
+    ),
+    GoRoute(
+      path: '/konfirmasi-pembayaran',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final data = state.extra as Map<String, dynamic>? ?? {};
+        return KonfirmasiPembayaranScreen(
+          data: data,
         );
       },
     ),

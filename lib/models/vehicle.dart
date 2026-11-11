@@ -16,6 +16,7 @@ class Vehicle {
   final int deliveryPrice;
   final String imageUrl;
   final bool isAvailable;
+  final bool isPopular;
   final DateTime? createdAt;
 
   Vehicle({
@@ -36,6 +37,7 @@ class Vehicle {
     this.deliveryPrice = 0,
     this.imageUrl = '',
     this.isAvailable = true,
+    this.isPopular = false,
     this.createdAt,
   });
 
@@ -66,6 +68,9 @@ class Vehicle {
       deliveryPrice: (data['deliveryPrice'] as num?)?.toInt() ?? 0,
       imageUrl: img,
       isAvailable: data['isAvailable'] ?? false,
+      isPopular: data['isPopular'] is bool
+          ? data['isPopular']
+          : (data['isPopular']?.toString().toLowerCase() == 'true'),
     );
   }
 
@@ -87,6 +92,7 @@ class Vehicle {
       'deliveryPrice': deliveryPrice,
       'imageUrl': imageUrl,
       'isAvailable': isAvailable,
+      'isPopular': isPopular,
     };
   }
 }
