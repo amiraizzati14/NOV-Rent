@@ -59,7 +59,7 @@ class AdminShell extends StatelessWidget {
           _navItem(context, location, '/admin', 'Dashboard', Icons.dashboard_outlined),
           _navItem(context, location, '/admin/armada', 'Armada', Icons.directions_car_outlined),
           _navItem(context, location, '/admin/pesanan', 'Pesanan', Icons.assignment_outlined),
-          _navItem(context, location, '/admin/verifikasi', 'Verifikasi', Icons.verified_user_outlined),
+          _navItem(context, location, '/admin/driver', 'Driver', Icons.person_outline_rounded),
         ]),
       );
 

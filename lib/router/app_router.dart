@@ -14,6 +14,7 @@ import '../screens/register_screen.dart';
 import '../screens/admin/admin_dashboard_screen.dart';
 import '../screens/admin/armada_screen.dart';
 import '../screens/admin/admin_shell.dart';
+import '../screens/admin/manajemen_sopir_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -46,9 +47,10 @@ final GoRouter appRouter = GoRouter(
           path: '/admin/pesanan',
           builder: (context, state) => const AdminPlaceholderScreen(title: 'Pesanan', icon: Icons.assignment_outlined),
         ),
+
         GoRoute(
-          path: '/admin/verifikasi',
-          builder: (context, state) => const AdminPlaceholderScreen(title: 'Verifikasi', icon: Icons.verified_user_outlined),
+        path: '/admin/driver',
+        builder: (context, state) => const ManajemenSopirScreen(),
         ),
       ],
     ),
