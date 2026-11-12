@@ -1,9 +1,8 @@
+import 'tambah_armada_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../services/car_service.dart';
 
-/// NOV Rent - Admin Armada.
-///
-/// UI uses demo data. Replace [demoCars] with your repository / Firebase data.
-/// Optional callbacks let the parent wire routes and business actions.
 class ArmadaScreen extends StatefulWidget {
   const ArmadaScreen({
     super.key,
@@ -20,7 +19,6 @@ class ArmadaScreen extends StatefulWidget {
   final ValueChanged<ArmadaCar>? onSchedule;
   final ValueChanged<ArmadaCar>? onEdit;
   final ValueChanged<ArmadaCar>? onRentalDetail;
-  /// Index: 0 Beranda, 1 Armada, 2 Pesanan, 3 Bayar, 4 Menu.
   final ValueChanged<int>? onNavTap;
 
   @override
@@ -43,11 +41,52 @@ class ArmadaCar {
     required this.transmission,
     required this.fuel,
     required this.status,
+    this.imageUrl,
     this.imageAsset,
     this.renter,
     this.returnInfo,
     this.isHybrid = false,
   });
+
+  factory ArmadaCar.fromFirestore(
+    DocumentSnapshot<Map<String, dynamic>> document,
+  ) {
+    final data = document.data() ?? <String, dynamic>{};
+    final status = data['status']?.toString();
+    final available = data['isAvailable'] != false && status != 'rented';
+    return ArmadaCar(
+      id: document.id,
+      name: _string(data['name'], 'Mobil'),
+      plate: _string(data['plateNumber'] ?? data['plate'], '-'),
+      colorName: _string(data['colorName'], 'Warna belum diatur'),
+      dailyPrice: _integer(data['pricePerDay'] ?? data['dailyPrice']),
+      year: _integer(data['year']),
+      seats: _integer(data['capacity'] ?? data['seats'], fallback: 0),
+      transmission: _string(data['transmission'], '-'),
+      fuel: _string(data['fuelType'] ?? data['fuel'], '-'),
+      status: available ? ArmadaStatus.available : ArmadaStatus.rented,
+      imageUrl: _stringOrNull(data['imageUrl']),
+      imageAsset: _stringOrNull(data['imageAsset']),
+      renter: _stringOrNull(data['renter']),
+      returnInfo: _stringOrNull(data['returnInfo']),
+      isHybrid: data['isHybrid'] == true || data['fuelType'] == 'Hybrid',
+    );
+  }
+
+  static String _string(dynamic value, String fallback) {
+    final result = value?.toString().trim();
+    return result == null || result.isEmpty ? fallback : result;
+  }
+
+  static String? _stringOrNull(dynamic value) {
+    final result = value?.toString().trim();
+    return result == null || result.isEmpty ? null : result;
+  }
+
+  static int _integer(dynamic value, {int fallback = 0}) {
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
+  }
 
   final String id;
   final String name;
@@ -59,6 +98,7 @@ class ArmadaCar {
   final String transmission;
   final String fuel;
   final ArmadaStatus status;
+  final String? imageUrl;
   final String? imageAsset;
   final String? renter;
   final String? returnInfo;
@@ -98,6 +138,90 @@ class _ArmadaScreenState extends State<ArmadaScreen> {
 
   final _searchController = TextEditingController();
   ArmadaFilter _filter = ArmadaFilter.all;
+  // Give the list a safe value before the first lifecycle callback runs.
+  // This also prevents a LateInitializationError after hot reload/state reuse.
+  List<ArmadaCar> _cars = <ArmadaCar>[];
+
+  @override
+  void initState() {
+    super.initState();
+    _cars = List<ArmadaCar>.from(widget.cars);
+  }
+
+  Future<void> _openAddArmada() async {
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const TambahArmadaScreen()),
+    );
+    if (!mounted || saved != true) return;
+    setState(() {
+      _filter = ArmadaFilter.all;
+      _searchController.clear();
+    });
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('Unit armada berhasil disimpan ke database.'),
+    ));
+  }
+
+  Future<void> _openEditArmada(ArmadaCar car) async {
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => TambahArmadaScreen(
+          initialData: ArmadaFormData(
+            id: car.id,
+            isAvailable: car.status == ArmadaStatus.available,
+            name: car.name,
+            plate: car.plate,
+            year: car.year,
+            transmission: car.transmission,
+            seats: car.seats,
+            fuel: car.fuel,
+            dailyPrice: car.dailyPrice,
+            odometer: 0,
+            bbmCondition: 'Full (8/8)',
+          ),
+        ),
+      ),
+    );
+    if (mounted && saved == true) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Data armada berhasil diperbarui.'),
+      ));
+    }
+  }
+
+  Future<void> _deleteArmada(ArmadaCar car) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus armada?'),
+        content: Text('Data ${car.name} akan dihapus dari database.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await CarService().deleteCar(car.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Armada berhasil dihapus.'),
+      ));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal menghapus armada: $error')),
+      );
+    }
+  }
 
   @override
   void dispose() {
@@ -107,7 +231,7 @@ class _ArmadaScreenState extends State<ArmadaScreen> {
 
   List<ArmadaCar> get _filteredCars {
     final search = _searchController.text.trim().toLowerCase();
-    return widget.cars.where((car) {
+    return _cars.where((car) {
       final matchesStatus = switch (_filter) {
         ArmadaFilter.all => true,
         ArmadaFilter.available => car.status == ArmadaStatus.available,
@@ -120,10 +244,10 @@ class _ArmadaScreenState extends State<ArmadaScreen> {
     }).toList();
   }
 
-  int get _availableCount => widget.cars
+  int get _availableCount => _cars
       .where((car) => car.status == ArmadaStatus.available).length;
 
-  int get _rentedCount => widget.cars
+  int get _rentedCount => _cars
       .where((car) => car.status == ArmadaStatus.rented).length;
 
   void _comingSoon(String action) {
@@ -134,7 +258,26 @@ class _ArmadaScreenState extends State<ArmadaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: CarService().watchCars(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Scaffold(
+            backgroundColor: surface,
+            body: Center(child: Text('Gagal memuat data armada:\n${snapshot.error}')),
+          );
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        _cars = (snapshot.data?.docs ?? [])
+            .map(ArmadaCar.fromFirestore)
+            .toList();
+
+        return Scaffold(
       backgroundColor: surface,
       body: SafeArea(
         child: Column(
@@ -188,6 +331,8 @@ class _ArmadaScreenState extends State<ArmadaScreen> {
           ],
         ),
       ),
+        );
+      },
     );
   }
 
@@ -232,7 +377,7 @@ class _ArmadaScreenState extends State<ArmadaScreen> {
           SizedBox(
             height: 42,
             child: ElevatedButton.icon(
-              onPressed: widget.onAdd ?? () => _comingSoon('Tambah armada'),
+              onPressed: widget.onAdd ?? _openAddArmada,
               icon: const Icon(Icons.add_circle_outline, size: 17),
               label: const Text('Tambah'),
               style: ElevatedButton.styleFrom(
@@ -250,7 +395,7 @@ class _ArmadaScreenState extends State<ArmadaScreen> {
 
   Widget _filters() => Row(
         children: [
-          _filterChip(ArmadaFilter.all, 'Semua', widget.cars.length, blue),
+          _filterChip(ArmadaFilter.all, 'Semua', _cars.length, blue),
           const SizedBox(width: 6),
           _filterChip(ArmadaFilter.available, 'Tersedia', _availableCount,
               const Color(0xFF16A865)),
@@ -328,8 +473,13 @@ class _ArmadaScreenState extends State<ArmadaScreen> {
                 constraints: const BoxConstraints(minWidth: 28),
                 onSelected: (value) {
                   if (value == 'edit') {
-                    widget.onEdit?.call(car);
-                    if (widget.onEdit == null) _comingSoon('Edit ${car.name}');
+                    if (widget.onEdit != null) {
+                      widget.onEdit!.call(car);
+                    } else {
+                      _openEditArmada(car);
+                    }
+                  } else if (value == 'delete') {
+                    _deleteArmada(car);
                   } else {
                     widget.onSchedule?.call(car);
                     if (widget.onSchedule == null) _comingSoon('Jadwal ${car.name}');
@@ -338,6 +488,7 @@ class _ArmadaScreenState extends State<ArmadaScreen> {
                 itemBuilder: (_) => const [
                   PopupMenuItem(value: 'edit', child: Text('Edit Unit')),
                   PopupMenuItem(value: 'schedule', child: Text('Lihat Jadwal')),
+                  PopupMenuItem(value: 'delete', child: Text('Hapus Unit')),
                 ],
               ),
             ],
@@ -430,8 +581,11 @@ class _ArmadaScreenState extends State<ArmadaScreen> {
             const SizedBox(width: 6),
             Expanded(child: _actionButton('Edit Unit', Icons.edit_outlined,
                 onPressed: () {
-                  widget.onEdit?.call(car);
-                  if (widget.onEdit == null) _comingSoon('Edit ${car.name}');
+                  if (widget.onEdit != null) {
+                    widget.onEdit!.call(car);
+                  } else {
+                    _openEditArmada(car);
+                  }
                 })),
           ]),
         ],
@@ -460,10 +614,13 @@ class _ArmadaScreenState extends State<ArmadaScreen> {
           borderRadius: BorderRadius.circular(9),
           child: SizedBox(
             width: 83, height: 61,
-            child: car.imageAsset == null
-                ? _imageFallback()
-                : Image.asset(car.imageAsset!, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _imageFallback()),
+            child: car.imageUrl != null
+                ? Image.network(car.imageUrl!, fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _imageFallback())
+                : car.imageAsset == null
+                    ? _imageFallback()
+                    : Image.asset(car.imageAsset!, fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _imageFallback()),
           ),
         ),
         if (car.isHybrid)
