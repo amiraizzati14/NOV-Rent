@@ -2,10 +2,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../services/car_service.dart';
 
-// Tahap UI: daftar mobil dibaca dari Firestore, tetapi sopir baru hanya
-// dikirim kembali ke Manajemen Sopir dan BELUM disimpan ke Firestore.
+// Tahap UI: data sopir dan foto hanya dikirim kembali ke Manajemen Sopir.
+// Belum ada penyimpanan atau verifikasi berkas di Firestore.
 class TambahSopirResult {
   final String name;
   final String phone;
@@ -19,6 +18,7 @@ class TambahSopirResult {
   final String plate;
   final String? localPhotoPath;
   final List<String> skills;
+  final String? localSimPhotoPath;
 
   const TambahSopirResult({
     required this.name,
@@ -33,6 +33,7 @@ class TambahSopirResult {
     required this.plate,
     required this.localPhotoPath,
     required this.skills,
+    this.localSimPhotoPath,
   });
 }
 
@@ -52,25 +53,20 @@ class _TambahSopirScreenState extends State<TambahSopirScreen> {
 
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
-  final _nik = TextEditingController();
   final _phone = TextEditingController();
   final _address = TextEditingController();
   final _emergencyName = TextEditingController();
   final _emergencyPhone = TextEditingController();
 
   String? _gender;
-  String _carId = '';
-  String _carName = '';
-  String _plate = '';
-  String _carImageUrl = '';
   XFile? _photo;
+  XFile? _simPhoto;
   bool _saving = false;
-  final Set<String> _skills = {'Transmisi Matic', 'Transmisi Manual'};
 
   @override
   void dispose() {
     for (final c in [
-      _name, _nik, _phone, _address, _emergencyName, _emergencyPhone,
+      _name, _phone, _address, _emergencyName, _emergencyPhone,
     ]) {
       c.dispose();
     }
@@ -83,21 +79,21 @@ class _TambahSopirScreenState extends State<TambahSopirScreen> {
     );
   }
 
-  Future<void> _selectPhoto() async {
+  Future<void> _selectImage({required bool sim}) async {
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       showDragHandle: true,
-      builder: (context) => SafeArea(
+      builder: (sheetContext) => SafeArea(
         child: Wrap(children: [
           ListTile(
             leading: const Icon(Icons.photo_library_outlined),
             title: const Text('Pilih dari galeri'),
-            onTap: () => Navigator.pop(context, ImageSource.gallery),
+            onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
           ),
           ListTile(
             leading: const Icon(Icons.camera_alt_outlined),
-            title: const Text('Ambil foto kamera'),
-            onTap: () => Navigator.pop(context, ImageSource.camera),
+            title: const Text('Ambil dengan kamera'),
+            onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
           ),
           const SizedBox(height: 10),
         ]),
@@ -106,135 +102,45 @@ class _TambahSopirScreenState extends State<TambahSopirScreen> {
     if (source == null) return;
     try {
       final file = await ImagePicker().pickImage(
-        source: source,
-        imageQuality: 80,
-        maxWidth: 1200,
+        source: source, imageQuality: 80, maxWidth: 1200,
       );
       if (file == null || !mounted) return;
-      final fileSize = await File(file.path).length();
+      final size = await File(file.path).length();
       if (!mounted) return;
-      if (fileSize > 5 * 1024 * 1024) {
+      final extension = file.path.toLowerCase();
+      if (!extension.endsWith('.jpg') &&
+          !extension.endsWith('.jpeg') &&
+          !extension.endsWith('.png')) {
+        _message('Gunakan foto JPG atau PNG.');
+        return;
+      }
+      if (size > 5 * 1024 * 1024) {
         _message('Ukuran foto maksimal 5 MB.');
         return;
       }
-      setState(() => _photo = file);
+      setState(() {
+        if (sim) {
+          _simPhoto = file;
+        } else {
+          _photo = file;
+        }
+      });
     } catch (e) {
       if (mounted) _message('Foto belum bisa dipilih: $e');
     }
   }
 
-  Future<void> _chooseCar() async {
-    final selection = await showModalBottomSheet<Map<String, String>>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      backgroundColor: Colors.white,
-      builder: (sheetContext) => SafeArea(
-        top: false,
-        child: SizedBox(
-          height: MediaQuery.sizeOf(sheetContext).height * .68,
-          child: Column(children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(18, 4, 18, 10),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Pilih Armada NOV Rent',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.not_interested_outlined),
-              title: const Text('Tanpa unit armada (On-Call / Standby Pool)'),
-              onTap: () => Navigator.pop(sheetContext, <String, String>{
-                'id': '', 'name': '', 'plate': '', 'imageUrl': '',
-              }),
-            ),
-            const Divider(height: 1),
-            Expanded(
-              child: StreamBuilder(
-                stream: CarService().watchCars(),
-                builder: (context, snapshot) {
-                  if (snapshot.hasError) {
-                    return Center(child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Text('Gagal memuat daftar mobil: ${snapshot.error}',
-                          textAlign: TextAlign.center),
-                    ));
-                  }
-                  if (!snapshot.hasData) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  final cars = snapshot.data!.docs;
-                  if (cars.isEmpty) {
-                    return const Center(child: Text('Belum ada mobil di Armada.'));
-                  }
-                  return ListView.builder(
-                    itemCount: cars.length,
-                    itemBuilder: (context, index) {
-                      final doc = cars[index];
-                      final data = doc.data();
-                      final name = (data['name'] ?? 'Mobil').toString();
-                      // Model Vehicle asli memuat name/imageUrl, sedangkan
-                      // plat bisa berbeda nama field antar dokumen lama.
-                      final plate = (data['plateNumber'] ??
-                          data['plate'] ?? data['licensePlate'] ?? '-')
-                          .toString();
-                      final image = data['imageUrl'] is String
-                          ? data['imageUrl'] as String
-                          : '';
-                      return ListTile(
-                        leading: image.isNotEmpty
-                            ? ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(image,
-                              width: 46, height: 46, fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) =>
-                              const Icon(Icons.directions_car)),
-                        )
-                            : const Icon(Icons.directions_car_outlined),
-                        title: Text(name),
-                        subtitle: Text(plate),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => Navigator.pop(sheetContext, {
-                          'id': doc.id,
-                          'name': name,
-                          'plate': plate,
-                          'imageUrl': image,
-                        }),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ]),
-        ),
-      ),
-    );
-    if (!mounted || selection == null) return;
-    setState(() {
-      _carId = selection['id'] ?? '';
-      _carName = selection['name'] ?? '';
-      _plate = selection['plate'] ?? '';
-      _carImageUrl = selection['imageUrl'] ?? '';
-    });
-  }
-
   void _resetForm() {
     _formKey.currentState?.reset();
     for (final c in [
-      _name, _nik, _phone, _address, _emergencyName, _emergencyPhone,
+      _name, _phone, _address, _emergencyName, _emergencyPhone,
     ]) {
       c.clear();
     }
     setState(() {
       _gender = null;
       _photo = null;
-      _carId = '';
-      _carName = '';
-      _plate = '';
-      _carImageUrl = '';
-      _skills..clear()..addAll(['Transmisi Matic', 'Transmisi Manual']);
+      _simPhoto = null;
     });
   }
 
@@ -248,16 +154,17 @@ class _TambahSopirScreenState extends State<TambahSopirScreen> {
     Navigator.pop(context, TambahSopirResult(
       name: _name.text.trim(),
       phone: _phone.text.trim(),
-      nik: _nik.text.trim(),
+      nik: '', // NIK tidak dikumpulkan pada desain baru.
       gender: _gender!,
       address: _address.text.trim(),
       emergencyContact: _emergencyName.text.trim(),
       emergencyPhone: _emergencyPhone.text.trim(),
-      carId: _carId,
-      car: _carName,
-      plate: _plate,
+      carId: '',
+      car: 'On-Call / Standby Pool',
+      plate: '',
       localPhotoPath: _photo?.path,
-      skills: _skills.toList(),
+      skills: const [],
+      localSimPhotoPath: _simPhoto?.path,
     ));
   }
 
@@ -295,7 +202,10 @@ class _TambahSopirScreenState extends State<TambahSopirScreen> {
                         ? FileImage(File(_photo!.path))
                         : null,
                     child: _photo == null
-                        ? const Icon(Icons.person_add_alt_1, size: 43, color: blue)
+                        ? const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Icon(Icons.person_add_alt_1, size: 38, color: blue),
+                      Text('Foto Profil', style: TextStyle(fontSize: 11, color: muted)),
+                    ])
                         : null,
                   ),
                   Positioned(
@@ -303,7 +213,7 @@ class _TambahSopirScreenState extends State<TambahSopirScreen> {
                     child: CircleAvatar(
                       radius: 19, backgroundColor: blue,
                       child: IconButton(
-                        onPressed: _selectPhoto,
+                        onPressed: () => _selectImage(sim: false),
                         padding: EdgeInsets.zero,
                         icon: const Icon(Icons.camera_alt_outlined,
                             color: Colors.white, size: 19),
@@ -322,7 +232,7 @@ class _TambahSopirScreenState extends State<TambahSopirScreen> {
                 ),
                 const SizedBox(height: 13),
                 TextButton.icon(
-                  onPressed: _selectPhoto,
+                  onPressed: () => _selectImage(sim: false),
                   icon: const Icon(Icons.upload_file_outlined),
                   label: const Text('Pilih File / Ambil Kamera'),
                   style: TextButton.styleFrom(
@@ -330,6 +240,53 @@ class _TambahSopirScreenState extends State<TambahSopirScreen> {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
                   ),
+                ),
+                const SizedBox(height: 13),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: pale,
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  child: Row(children: [
+                    Container(
+                      width: 47,
+                      height: 47,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: _simPhoto == null
+                          ? const Icon(Icons.badge_outlined, color: blue)
+                          : ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.file(File(_simPhoto!.path), fit: BoxFit.cover),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Foto Fisik SIM', style: TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.bold, color: dark,
+                        )),
+                        Text(
+                          _simPhoto == null ? 'Belum diunggah' : 'Foto dipilih',
+                          style: TextStyle(fontSize: 12,
+                              color: _simPhoto == null ? Colors.red : Colors.green),
+                        ),
+                      ],
+                    )),
+                    TextButton.icon(
+                      onPressed: () => _selectImage(sim: true),
+                      icon: const Icon(Icons.cloud_upload_outlined, size: 17),
+                      label: const Text('Pilih File'),
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: blue,
+                      ),
+                    ),
+                  ]),
                 ),
               ])),
               const SizedBox(height: 19),
@@ -339,12 +296,7 @@ class _TambahSopirScreenState extends State<TambahSopirScreen> {
                   _sectionTitle(Icons.badge_outlined, 'Identitas & Kontak'),
                   _field('Nama Lengkap Sesuai KTP', _name,
                       hint: 'Cth. Bambang Trihatmojo', required: true),
-                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Expanded(child: _field('NIK KTP', _nik,
-                        hint: '16 digit', digits: true, maxLength: 16)),
-                    const SizedBox(width: 9),
-                    Expanded(child: _genderField()),
-                  ]),
+                  _genderField(),
                   Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Expanded(child: _idField()),
                     const SizedBox(width: 9),
@@ -365,55 +317,6 @@ class _TambahSopirScreenState extends State<TambahSopirScreen> {
                 ],
               )),
               const SizedBox(height: 19),
-              _card(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                _sectionTitle(Icons.car_rental_outlined, 'Unit Armada & Wilayah'),
-                const Text('Unit Armada Awal (Opsional)',
-                    style: TextStyle(fontSize: 12, color: dark)),
-                const SizedBox(height: 8),
-                InkWell(
-                  onTap: _chooseCar,
-                  borderRadius: BorderRadius.circular(13),
-                  child: Container(
-                    padding: const EdgeInsets.all(13),
-                    decoration: BoxDecoration(color: pale,
-                        borderRadius: BorderRadius.circular(13)),
-                    child: Row(children: [
-                      if (_carImageUrl.isNotEmpty)
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(_carImageUrl, width: 36, height: 36,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const Icon(Icons.directions_car)),
-                        )
-                      else
-                        const Icon(Icons.directions_car_outlined, color: muted),
-                      const SizedBox(width: 12),
-                      Expanded(child: Text(
-                        _carName.isEmpty
-                            ? 'Pilih mobil default atau kosongkan'
-                            : '$_carName  ·  $_plate',
-                        style: const TextStyle(color: dark, fontSize: 12),
-                        maxLines: 2, overflow: TextOverflow.ellipsis,
-                      )),
-                      const Icon(Icons.chevron_right, color: blue, size: 18),
-                    ]),
-                  ),
-                ),
-                const SizedBox(height: 7),
-                const Text('Jika dikosongkan, sopir akan berstatus "On-Call / Standby Pool".',
-                    style: TextStyle(fontSize: 11, color: muted, height: 1.4)),
-                const SizedBox(height: 20),
-                const Text('Spesialisasi & Kualifikasi Kemudi',
-                    style: TextStyle(fontSize: 12, color: dark)),
-                const SizedBox(height: 10),
-                Wrap(spacing: 8, runSpacing: 8, children: [
-                  _skill('Transmisi Matic'),
-                  _skill('Transmisi Manual'),
-                  _skill('English Speaking (Tamu VIP)'),
-                  _skill('Penjemputan VIP Bandara'),
-                ]),
-              ])),
-              const SizedBox(height: 20),
               Container(
                 padding: const EdgeInsets.all(13),
                 decoration: BoxDecoration(color: const Color(0xFFE9ECFF),
@@ -423,7 +326,7 @@ class _TambahSopirScreenState extends State<TambahSopirScreen> {
                       Icon(Icons.lock_outline, color: blue, size: 22),
                       SizedBox(width: 9),
                       Expanded(child: Text(
-                        'Simulasi Pendaftaran NOV Rent\nData form belum disimpan ke server. Integrasi Firestore dan verifikasi berkas dilakukan pada tahap CRUD.',
+                        'Demo pendaftaran NOV Rent\nData sopir dan foto belum disimpan ke server. Verifikasi SIM dan penyimpanan aman memerlukan integrasi backend.',
                         style: TextStyle(color: dark, fontSize: 11, height: 1.35),
                       )),
                     ]),
@@ -439,25 +342,15 @@ class _TambahSopirScreenState extends State<TambahSopirScreen> {
                       borderRadius: BorderRadius.circular(12)),
                 ),
               )),
-              const SizedBox(height: 10),
-              Row(children: [
-                Expanded(child: SizedBox(height: 47, child: TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: TextButton.styleFrom(backgroundColor: pale,
-                      foregroundColor: dark),
-                  child: const Text('Batal'),
-                ))),
-                const SizedBox(width: 8),
-                Expanded(child: SizedBox(height: 47, child: TextButton.icon(
+              const SizedBox(height: 12),
+              Center(
+                child: TextButton.icon(
                   onPressed: _resetForm,
-                  icon: const Icon(Icons.restart_alt, size: 16),
+                  icon: const Icon(Icons.restart_alt, size: 18),
                   label: const Text('Reset Formulir'),
-                  style: TextButton.styleFrom(
-                    backgroundColor: const Color(0xFFFFDAD7),
-                    foregroundColor: const Color(0xFFAE1824),
-                  ),
-                ))),
-              ]),
+                  style: TextButton.styleFrom(foregroundColor: muted),
+                ),
+              ),
             ],
           ),
         ),
@@ -519,10 +412,6 @@ class _TambahSopirScreenState extends State<TambahSopirScreen> {
           validator: (value) {
             final v = (value ?? '').trim();
             if (required && v.isEmpty) return '$label wajib diisi';
-            if (label == 'NIK KTP' && v.isNotEmpty &&
-                !RegExp(r'^\d{16}$').hasMatch(v)) {
-              return 'Harus 16 digit';
-            }
             return null;
           },
         ),
@@ -535,7 +424,7 @@ class _TambahSopirScreenState extends State<TambahSopirScreen> {
       const Text('Jenis Kelamin', style: TextStyle(fontSize: 12, color: dark)),
       const SizedBox(height: 7),
       DropdownButtonFormField<String>(
-        value: _gender,
+        initialValue: _gender,
         isExpanded: true,
         decoration: _decoration('Pilih jenis kelamin'),
         items: const ['Laki-Laki', 'Perempuan'].map((e) =>
@@ -555,9 +444,7 @@ class _TambahSopirScreenState extends State<TambahSopirScreen> {
           alignment: Alignment.centerLeft,
           decoration: BoxDecoration(color: pale,
               borderRadius: BorderRadius.circular(13)),
-          child: const Text('Otomatis saat disimpan ke database',
-              maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 11, color: muted))),
+          child: const Text('#', style: TextStyle(fontSize: 19, color: muted))),
     ]),
   );
 
@@ -570,26 +457,4 @@ class _TambahSopirScreenState extends State<TambahSopirScreen> {
     validator: (v) => (v ?? '').trim().isEmpty ? 'Wajib diisi' : null,
   );
 
-  Widget _skill(String label) {
-    final selected = _skills.contains(label);
-    return FilterChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: (on) => setState(() {
-        if (on) {
-          _skills.add(label);
-        } else {
-          _skills.remove(label);
-        }
-      }),
-      showCheckmark: true,
-      checkmarkColor: Colors.white,
-      selectedColor: const Color(0xFF0755C9),
-      backgroundColor: const Color(0xFFE8ECFF),
-      labelStyle: TextStyle(color: selected ? Colors.white : dark,
-          fontSize: 11, fontWeight: FontWeight.w600),
-      side: BorderSide.none,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-    );
-  }
 }
