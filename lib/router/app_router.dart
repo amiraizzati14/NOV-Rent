@@ -11,10 +11,11 @@ import '../screens/user/konfirmasi_pembayaran_screen.dart';
 import '../screens/login_screen.dart';
 import '../widget/main_shell.dart';
 import '../screens/register_screen.dart';
-import '../screens/admin/admin_dashboard_screen.dart';
-import '../screens/admin/armada_screen.dart';
-import '../screens/admin/admin_shell.dart';
-import '../screens/admin/manajemen_sopir_screen.dart';
+import '../screens/Admin/admin_dashboard_screen.dart';
+import '../screens/Admin/armada_screen.dart';
+import '../screens/Admin/admin_shell.dart';
+import '../screens/Admin/manajemen_sopir_screen.dart';
+import '../screens/Admin/admin_detail_pesanan_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -111,6 +112,17 @@ final GoRouter appRouter = GoRouter(
         final data = state.extra as Map<String, dynamic>? ?? {};
         return KonfirmasiPembayaranScreen(
           data: data,
+        );
+      },
+    ),
+    GoRoute(
+      path: '/admin/pesanan/:orderId',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final orderId = state.pathParameters['orderId']!;
+
+        return AdminDetailPesananScreen(
+          orderId: orderId,
         );
       },
     ),
