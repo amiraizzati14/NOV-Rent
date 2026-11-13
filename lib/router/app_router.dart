@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:nov_rent/screens/Admin/halaman_pesanan_screen.dart';
 import 'package:nov_rent/screens/user/favorite_screen.dart';
 import 'package:nov_rent/screens/user/pesanan_screen.dart';
 import '../screens/user/home_screen.dart';
@@ -46,7 +47,7 @@ final GoRouter appRouter = GoRouter(
         ),
         GoRoute(
           path: '/admin/pesanan',
-          builder: (context, state) => const AdminPlaceholderScreen(title: 'Pesanan', icon: Icons.assignment_outlined),
+          builder: (context, state) => const HalamanPesanan(),
         ),
 
         GoRoute(
