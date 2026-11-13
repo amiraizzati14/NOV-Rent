@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import '../../providers/auth_provider.dart';
+import 'edit_profile_screen.dart';
 
 class AccountScreen extends StatelessWidget {
   const AccountScreen({super.key});
@@ -91,7 +92,18 @@ class AccountScreen extends StatelessWidget {
               verified: isVerified,
               verificationStatus: verificationStatus,
               showBottomNavigation: false,
-              onEdit: () => pending('Ubah profil'),
+              onEdit: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => EditProfileScreen(
+                      name: name,
+                      phone: phone,
+                      email: email,
+                    ),
+                  ),
+                );
+              },
               onNotifications: () => pending('Notifikasi'),
               onHelp: () => pending('Pusat bantuan'),
               onTerms: () => pending('Syarat dan ketentuan'),

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import '../../utils/app_constants.dart';
+import 'status_pembayaran_screen.dart';
 
 class PesananScreen extends StatefulWidget {
   const PesananScreen({super.key});
@@ -518,10 +519,32 @@ class _PesananScreenState extends State<PesananScreen> with SingleTickerProvider
                 ),
                 OutlinedButton(
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Detail pesanan $orderNumber akan segera hadir.'),
-                        duration: const Duration(seconds: 2),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => StatusPembayaranScreen(
+                          bookingCode: orderNumber,
+                          carName: carName,
+                          carCategory: data['carCategory']?.toString() ?? 'Mobil',
+                          carYear: data['carYear']?.toString() ?? '-',
+                          transmission: data['transmission']?.toString() ?? 'Automatic',
+                          carImage: carImage,
+                          startDate: startDate != null
+                              ? AppFormatters.dateWithYear(startDate)
+                              : '-',
+                          endDate: endDate != null
+                              ? AppFormatters.dateWithYear(endDate)
+                              : '-',
+                          duration: '$rentalDays Hari',
+                          rentalType: serviceType,
+                          totalPayment: AppFormatters.rupiah(grandTotal),
+                          proofFileName: data['proofFileName']?.toString() ?? 'Bukti transfer',
+                          proofFileSize: data['proofFileSize']?.toString() ?? 'File terunggah',
+                          senderName: data['senderName']?.toString() ?? '-',
+                          senderBank: data['senderBank']?.toString() ?? '-',
+                          transferTime: '-',
+                          proofImageUrl: data['paymentProofUrl']?.toString() ?? '',
+                        ),
                       ),
                     );
                   },
