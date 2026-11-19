@@ -36,7 +36,7 @@ class AdminShell extends StatelessWidget {
             Text('ADMIN HUB • DASHBOARD', style: TextStyle(color: muted, fontSize: 10, letterSpacing: .7)),
           ])),
           Stack(children: [
-            IconButton(onPressed: () {}, icon: const Icon(Icons.notifications_none_rounded, color: ink, size: 25)),
+            IconButton(onPressed: () => context.push('/notifikasi'), icon: const Icon(Icons.notifications_none_rounded, color: ink, size: 25)),
             Positioned(right: 7, top: 8, child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle))),
           ]),
           PopupMenuButton<String>(

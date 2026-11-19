@@ -40,7 +40,7 @@ class AdminDashboardScreen extends StatelessWidget {
       Text('NOV RENT', style: TextStyle(color: blue, fontSize: 15, fontWeight: FontWeight.w800)),
       Text('ADMIN HUB • DASHBOARD', style: TextStyle(color: muted, fontSize: 10, letterSpacing: .7)),
     ])),
-    Stack(children: [IconButton(onPressed: () {}, icon: const Icon(Icons.notifications_none_rounded, color: ink, size: 25)), Positioned(right: 7, top: 8, child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle)))]),
+    Stack(children: [IconButton(onPressed: () => context.push('/notifikasi'), icon: const Icon(Icons.notifications_none_rounded, color: ink, size: 25)), Positioned(right: 7, top: 8, child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle)))]),
     PopupMenuButton<String>(onSelected: (value) async { if (value == 'logout') { await context.read<AuthProvider>().logout(); if (context.mounted) context.go('/login'); } }, itemBuilder: (_) => const [PopupMenuItem(value: 'logout', child: Text('Keluar'))], child: const CircleAvatar(radius: 18, backgroundColor: Color(0xFFD9E3F8), child: Icon(Icons.person, color: blue))),
   ]);
 

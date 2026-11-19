@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class PesananAdminScreen extends StatefulWidget {
   const PesananAdminScreen({super.key});
@@ -303,7 +304,7 @@ class _PesananAdminScreenState extends State<PesananAdminScreen> {
         ),
         actions: [
           IconButton(
-            onPressed: () => _showMessage('Belum ada notifikasi baru.'),
+            onPressed: () => context.push('/notifikasi'),
             icon: const Icon(
               Icons.notifications_none,
               color: dark,

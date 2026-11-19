@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class VerifikasiDokumenScreen extends StatefulWidget {
   const VerifikasiDokumenScreen({super.key});
@@ -41,7 +42,7 @@ class _VerifikasiDokumenScreenState extends State<VerifikasiDokumenScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_none, color: Colors.black),
-            onPressed: () {},
+            onPressed: () => context.push('/notifikasi'),
           ),
           const Padding(
             padding: EdgeInsets.only(right: 16.0),

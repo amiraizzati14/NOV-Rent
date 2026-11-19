@@ -587,8 +587,8 @@ class _HomeScreenState extends State<HomeScreen> {
   // ==========================================
 
   Widget _buildHeader() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(
+    return Padding(
+      padding: const EdgeInsets.symmetric(
         horizontal: 15,
         vertical: 5,
       ),
@@ -597,7 +597,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
+            const Text(
               'NOV RENT',
               style: TextStyle(
                 fontSize: 16,
@@ -606,10 +606,36 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: dark,
               ),
             ),
-            Icon(
-              Icons.notifications_none,
-              size: 22,
-              color: dark,
+            InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () {
+                context.push('/notifikasi');
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(6.0),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Icon(
+                      Icons.notifications_none_rounded,
+                      size: 24,
+                      color: dark,
+                    ),
+                    Positioned(
+                      right: 1,
+                      top: 1,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF2B5CFF),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),

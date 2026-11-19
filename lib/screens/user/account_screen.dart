@@ -104,7 +104,7 @@ class AccountScreen extends StatelessWidget {
                   ),
                 );
               },
-              onNotifications: () => pending('Notifikasi'),
+              onNotifications: () => context.push('/notifikasi'),
               onHelp: () => pending('Pusat bantuan'),
               onTerms: () => pending('Syarat dan ketentuan'),
               onPrivacy: () => pending('Kebijakan privasi'),
