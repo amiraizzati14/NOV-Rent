@@ -20,7 +20,6 @@ import '../screens/Admin/admin_detail_pesanan_screen.dart';
 import '../screens/admin/pesanan_admin_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
-final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
@@ -58,31 +57,45 @@ final GoRouter appRouter = GoRouter(
       ],
     ),
 
-    ShellRoute(
-      navigatorKey: _shellNavigatorKey,
-      builder: (context, state, child) {
-        return MainShell(child: child);
+    StatefulShellRoute.indexedStack(
+      builder: (context, state, navigationShell) {
+        return MainShell(child: navigationShell);
       },
-      routes: [
-        GoRoute(
-          path: '/home',
-          builder: (context, state) => const HomeScreen(),
+      branches: [
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/home',
+              builder: (context, state) => const HomeScreen(),
+            ),
+          ],
         ),
-        GoRoute(
-          path: '/favorite',
-          builder: (context, state) => const FavoriteScreen(),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/favorite',
+              builder: (context, state) => const FavoriteScreen(),
+            ),
+          ],
         ),
-        GoRoute(
-          path: '/pesanan',
-          builder: (context, state) => const PesananScreen(),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/pesanan',
+              builder: (context, state) => const PesananScreen(),
+            ),
+          ],
         ),
-        GoRoute(
-          path: '/account',
-          builder: (context, state) => const AccountScreen(),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/account',
+              builder: (context, state) => const AccountScreen(),
+            ),
+          ],
         ),
       ],
     ),
-
     GoRoute(
       path: '/detail/:id',
       parentNavigatorKey: _rootNavigatorKey,

@@ -5,8 +5,23 @@ class RentalProvider extends ChangeNotifier {
   final List<Vehicle> _cart = [];
   bool _isLoading = false;
 
+  DateTime? _homeStartDate;
+  DateTime? _homeEndDate;
+
   List<Vehicle> get cart => List.unmodifiable(_cart);
   bool get isLoading => _isLoading;
+
+  DateTime? get homeStartDate => _homeStartDate;
+  DateTime? get homeEndDate => _homeEndDate;
+
+  void setHomeRentalDates({
+    required DateTime? startDate,
+    required DateTime? endDate,
+  }) {
+    _homeStartDate = startDate;
+    _homeEndDate = endDate;
+    notifyListeners();
+  }
 
   void addToCart(Vehicle car) {
     _cart.add(car);
@@ -30,7 +45,7 @@ class RentalProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Simulasi proses checkout sementara
+      // Simulasi proses checkout sementara.
       await Future.delayed(const Duration(seconds: 2));
 
       _cart.clear();

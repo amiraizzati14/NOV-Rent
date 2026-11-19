@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
 import '../../utils/app_constants.dart';
+import 'package:provider/provider.dart';
+import '../../providers/rental_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
