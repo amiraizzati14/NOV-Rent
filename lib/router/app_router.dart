@@ -18,7 +18,6 @@ import '../screens/Admin/admin_shell.dart';
 import '../screens/Admin/manajemen_sopir_screen.dart';
 import '../screens/Admin/admin_detail_pesanan_screen.dart';
 import '../screens/admin/pesanan_admin_screen.dart';
-import '../screens/user/notifikasi_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -34,7 +33,6 @@ final GoRouter appRouter = GoRouter(
       path: '/register',
       builder: (context, state) => const RegisterScreen(),
     ),
-
     ShellRoute(
       builder: (context, state, child) => AdminShell(child: child),
       routes: [
@@ -50,14 +48,12 @@ final GoRouter appRouter = GoRouter(
           path: '/admin/pesanan',
           builder: (context, state) => const HalamanPesanan(),
         ),
-
         GoRoute(
-        path: '/admin/driver',
-        builder: (context, state) => const ManajemenSopirScreen(),
+          path: '/admin/driver',
+          builder: (context, state) => const ManajemenSopirScreen(),
         ),
       ],
     ),
-
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
         return MainShell(child: navigationShell);
@@ -141,11 +137,6 @@ final GoRouter appRouter = GoRouter(
           orderId: orderId,
         );
       },
-    ),
-    GoRoute(
-      path: '/notifikasi',
-      name: 'notifikasi',
-      builder: (context, state) => const NotifikasiScreen(),
     ),
   ],
 );
