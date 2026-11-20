@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import '../../utils/app_constants.dart';
+import '../../widgets/map_location_picker_sheet.dart';
 
 class RingkasanPesananScreen extends StatefulWidget {
   final String carId;
@@ -32,6 +33,13 @@ class _RingkasanPesananScreenState extends State<RingkasanPesananScreen> {
   bool _isDelivery = false; // false = Ambil Sendiri, true = Diantar ke Alamat
   String _paymentMethod = 'BCA Virtual Account';
   String _paymentBank = 'BCA';
+
+  // Data Lokasi Pengantaran (Jika _isDelivery == true)
+  String? _deliveryAddress;
+  String? _deliveryNotes;
+  double? _deliveryLat;
+  double? _deliveryLng;
+  double? _deliveryDistance;
 
   late DateTime _start;
   late DateTime _end;
@@ -127,7 +135,86 @@ class _RingkasanPesananScreenState extends State<RingkasanPesananScreen> {
     );
   }
 
-  void _handlePayment(Map<String, dynamic> car, Map<String, dynamic> user) {
+  Future<void> _openMapLocationPicker({
+    required double poolLat,
+    required double poolLng,
+    required String poolAddress,
+  }) async {
+    final result = await MapLocationPickerSheet.show(
+      context,
+      poolLat: poolLat,
+      poolLng: poolLng,
+      poolAddress: poolAddress,
+      initialLat: _deliveryLat,
+      initialLng: _deliveryLng,
+      initialNotes: _deliveryNotes,
+      maxDistanceKm: 5.0,
+    );
+
+    if (result != null) {
+      setState(() {
+        _deliveryAddress = result.address;
+        _deliveryNotes = result.notes;
+        _deliveryLat = result.latitude;
+        _deliveryLng = result.longitude;
+        _deliveryDistance = result.distanceKm;
+      });
+    }
+  }
+
+  void _handlePayment(
+    Map<String, dynamic> car,
+    Map<String, dynamic> user, {
+    required double poolLat,
+    required double poolLng,
+    required String poolAddress,
+  }) {
+    // Validasi lokasi pengantaran bila user memilih "Diantar ke Alamat"
+    if (_isDelivery) {
+      if (_deliveryAddress == null ||
+          _deliveryLat == null ||
+          _deliveryLng == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+                'Silakan tentukan titik lokasi pengantaran di peta terlebih dahulu.'),
+            backgroundColor: AppColors.danger,
+            action: SnackBarAction(
+              label: 'Pilih Titik',
+              textColor: Colors.white,
+              onPressed: () => _openMapLocationPicker(
+                poolLat: poolLat,
+                poolLng: poolLng,
+                poolAddress: poolAddress,
+              ),
+            ),
+          ),
+        );
+        return;
+      }
+
+      if (_deliveryDistance != null && _deliveryDistance! > 5.0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Jarak pengantaran (${_deliveryDistance!.toStringAsFixed(1)} km) melebihi batas maksimal 5 km dari pool.',
+            ),
+            backgroundColor: AppColors.danger,
+            action: SnackBarAction(
+              label: 'Ubah Lokasi',
+              textColor: Colors.white,
+              onPressed: () => _openMapLocationPicker(
+                poolLat: poolLat,
+                poolLng: poolLng,
+                poolAddress: poolAddress,
+              ),
+            ),
+          ),
+        );
+        return;
+      }
+    }
+
     final pricePerDay = (car['pricePerDay'] as num?)?.toInt() ?? 350000;
     final unitTotal = pricePerDay * _rentalDays;
     final deliveryFee = _isDelivery ? _deliveryPricePerDay * _rentalDays : 0;
@@ -151,7 +238,11 @@ class _RingkasanPesananScreenState extends State<RingkasanPesananScreen> {
       'rentalDays': _rentalDays,
       'withDriver': widget.withDriver,
       'isDelivery': _isDelivery,
-      'deliveryAddress': _isDelivery ? 'Alamat Pengantaran Customer' : null,
+      'deliveryAddress': _isDelivery ? _deliveryAddress : null,
+      'deliveryNotes': _isDelivery ? _deliveryNotes : null,
+      'deliveryLat': _isDelivery ? _deliveryLat : null,
+      'deliveryLng': _isDelivery ? _deliveryLng : null,
+      'deliveryDistance': _isDelivery ? _deliveryDistance : null,
       'deliveryFee': deliveryFee,
       'driverFee': driverFee,
       'insuranceFee': _insuranceFee,
@@ -653,7 +744,16 @@ class _RingkasanPesananScreenState extends State<RingkasanPesananScreen> {
 
                       // Pilihan 2: Diantar ke Alamat
                       InkWell(
-                        onTap: () => setState(() => _isDelivery = true),
+                        onTap: () {
+                          setState(() => _isDelivery = true);
+                          if (_deliveryAddress == null) {
+                            _openMapLocationPicker(
+                              poolLat: poolLat,
+                              poolLng: poolLng,
+                              poolAddress: poolAddress,
+                            );
+                          }
+                        },
                         borderRadius: BorderRadius.circular(12),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
@@ -887,37 +987,10 @@ class _RingkasanPesananScreenState extends State<RingkasanPesananScreen> {
                           ),
                         )
                       else
-                        Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFFE9ECF2)),
-                          ),
-                          child: const Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.location_on_outlined,
-                                      color: primaryBlue, size: 20),
-                                  SizedBox(width: 8),
-                                  Text('Alamat Pengantaran',
-                                      style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.bold)),
-                                ],
-                              ),
-                              SizedBox(height: 6),
-                              Text(
-                                'Mobil akan diantarkan langsung ke alamat rumah atau lokasi yang kamu tentukan sebelum jadwal sewa dimulai.',
-                                style: TextStyle(
-                                    fontSize: 11,
-                                    color: Color(0xFF4A5568),
-                                    height: 1.4),
-                              ),
-                            ],
-                          ),
+                        _buildDeliveryLocationCard(
+                          poolLat,
+                          poolLng,
+                          poolAddress,
                         ),
 
                       const SizedBox(height: 18),
@@ -1140,7 +1213,13 @@ class _RingkasanPesananScreenState extends State<RingkasanPesananScreen> {
                             width: double.infinity,
                             height: 48,
                             child: ElevatedButton(
-                              onPressed: () => _handlePayment(car, user),
+                              onPressed: () => _handlePayment(
+                                car,
+                                user,
+                                poolLat: poolLat,
+                                poolLng: poolLng,
+                                poolAddress: poolAddress,
+                              ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: primaryBlue,
                                 foregroundColor: Colors.white,
@@ -1184,11 +1263,343 @@ class _RingkasanPesananScreenState extends State<RingkasanPesananScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF4A5568))),
+          style: const TextStyle(fontSize: 12, color: Color(0xFF4A5568))),
         Text(value,
-            style: const TextStyle(
-                fontSize: 12, fontWeight: FontWeight.w600, color: darkText)),
+          style: const TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w600, color: darkText)),
       ],
+    );
+  }
+
+  Widget _buildDeliveryLocationCard(
+    double poolLat,
+    double poolLng,
+    String poolAddress,
+  ) {
+    if (_deliveryAddress == null) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE9ECF2)),
+        ),
+        child: Column(
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEBF2FF),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.add_location_alt_outlined,
+                      color: primaryBlue, size: 24),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Titik Lokasi Pengantaran',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: darkText,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Tentukan titik antar di peta. Kami melayani pengantaran maksimal 5 km dari Pool NOV Rent.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF4A5568),
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _openMapLocationPicker(
+                  poolLat: poolLat,
+                  poolLng: poolLng,
+                  poolAddress: poolAddress,
+                ),
+                icon: const Icon(Icons.map_outlined, size: 18),
+                label: const Text(
+                  'Pilih Titik di Peta (Maks. 5 km)',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryBlue,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final bool isOutOfRange =
+        _deliveryDistance != null && _deliveryDistance! > 5.0;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isOutOfRange
+              ? AppColors.danger.withOpacity(0.5)
+              : const Color(0xFFE9ECF2),
+          width: isOutOfRange ? 1.5 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isOutOfRange
+                      ? AppColors.dangerLight
+                      : const Color(0xFFEBF2FF),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.location_on,
+                  color: isOutOfRange ? AppColors.danger : primaryBlue,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Titik Pengantaran Dipilih',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: darkText,
+                  ),
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isOutOfRange
+                      ? AppColors.dangerLight
+                      : AppColors.successLight,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isOutOfRange
+                        ? AppColors.danger.withOpacity(0.2)
+                        : AppColors.success.withOpacity(0.2),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isOutOfRange
+                          ? Icons.warning_amber_rounded
+                          : Icons.check_circle_outline,
+                      size: 13,
+                      color: isOutOfRange
+                          ? AppColors.danger
+                          : AppColors.success,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _deliveryDistance != null
+                          ? '${_deliveryDistance!.toStringAsFixed(1)} km'
+                          : '-',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: isOutOfRange
+                            ? AppColors.danger
+                            : AppColors.success,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            _deliveryAddress!,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: darkText,
+              height: 1.3,
+            ),
+          ),
+          if (_deliveryNotes != null && _deliveryNotes!.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.edit_note, size: 16, color: mutedText),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Patokan: $_deliveryNotes',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF4A5568),
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 10),
+          if (isOutOfRange) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.dangerLight,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.danger.withOpacity(0.2)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.error_outline,
+                      size: 16, color: AppColors.danger),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Jarak pengantaran melebihi batas maksimal 5 km (${_deliveryDistance!.toStringAsFixed(1)} km). Anda tidak dapat memesan dengan titik ini. Silakan ubah titik atau pilih Ambil Sendiri di Rental.',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.danger,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _openMapLocationPicker(
+                    poolLat: poolLat,
+                    poolLng: poolLng,
+                    poolAddress: poolAddress,
+                  ),
+                  icon: const Icon(Icons.edit_location_alt_outlined, size: 16),
+                  label: const Text('Ubah Titik Peta',
+                      style: TextStyle(
+                          fontSize: 11, fontWeight: FontWeight.w600)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: primaryBlue,
+                    side: const BorderSide(color: Color(0xFFD0E1FD)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    final mapsUrl =
+                        'https://www.google.com/maps/search/?api=1&query=$_deliveryLat,$_deliveryLng';
+                    Clipboard.setData(ClipboardData(text: mapsUrl));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Link Google Maps lokasi antar disalin!'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.explore_outlined, size: 16),
+                  label: const Text('Buka di Maps',
+                      style: TextStyle(
+                          fontSize: 11, fontWeight: FontWeight.w600)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: darkText,
+                    side: const BorderSide(color: Color(0xFFE2E8F0)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.local_shipping_outlined,
+                  size: 16, color: primaryBlue),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Mobil akan diantarkan langsung ke titik ini oleh driver profesional kami sebelum waktu sewa dimulai.',
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF4A5568),
+                      height: 1.4),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Icon(Icons.calendar_today_outlined,
+                  size: 15, color: primaryBlue),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Jadwal Pengantaran',
+                      style: TextStyle(fontSize: 10, color: mutedText)),
+                  Text(
+                    '${_formatDateShort(_start)} • 09:00 WIB',
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: darkText),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

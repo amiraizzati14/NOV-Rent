@@ -190,6 +190,10 @@ class _KonfirmasiPembayaranScreenState extends State<KonfirmasiPembayaranScreen>
         'serviceType': serviceType,
         'deliveryMethod': deliveryMethod,
         'deliveryAddress': deliveryAddress,
+        'deliveryNotes': widget.data['deliveryNotes'],
+        'deliveryLat': widget.data['deliveryLat'],
+        'deliveryLng': widget.data['deliveryLng'],
+        'deliveryDistance': widget.data['deliveryDistance'],
         'deliveryFee': deliveryFee,
         'driverFee': driverFee,
         'insuranceFee': insuranceFee,
@@ -301,6 +305,9 @@ class _KonfirmasiPembayaranScreenState extends State<KonfirmasiPembayaranScreen>
     final int rentalDays = widget.data['rentalDays'] as int? ?? 2;
     final bool withDriver = widget.data['withDriver'] == true;
     final bool isDelivery = widget.data['isDelivery'] == true;
+    final String? deliveryAddress = widget.data['deliveryAddress']?.toString();
+    final double? deliveryDistance =
+        (widget.data['deliveryDistance'] as num?)?.toDouble();
     final int grandTotal = widget.data['grandTotal'] as int? ?? 700000;
     final String paymentBank = widget.data['paymentBank']?.toString() ?? 'BCA';
 
@@ -520,18 +527,51 @@ class _KonfirmasiPembayaranScreenState extends State<KonfirmasiPembayaranScreen>
                     ),
                     const SizedBox(height: 8),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.storefront_outlined, size: 15, color: mutedText),
+                        Icon(
+                          isDelivery
+                              ? Icons.local_shipping_outlined
+                              : Icons.storefront_outlined,
+                          size: 15,
+                          color: mutedText,
+                        ),
                         const SizedBox(width: 8),
-                        const Text('Metode Ambil', style: TextStyle(fontSize: 11, color: mutedText)),
-                        const Spacer(),
-                        Flexible(
-                          child: Text(
-                            isDelivery ? 'Diantar ke Alamat' : poolAddress,
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: darkText),
-                            textAlign: TextAlign.end,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                        Text(
+                          isDelivery ? 'Lokasi Antar' : 'Metode Ambil',
+                          style: const TextStyle(fontSize: 11, color: mutedText),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                isDelivery
+                                    ? (deliveryAddress != null &&
+                                            deliveryAddress.isNotEmpty
+                                        ? deliveryAddress
+                                        : 'Diantar ke Alamat')
+                                    : poolAddress,
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: darkText),
+                                textAlign: TextAlign.end,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (isDelivery && deliveryDistance != null) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Jarak: ${deliveryDistance.toStringAsFixed(1)} km dari Pool',
+                                  style: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: primaryBlue),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                       ],
